@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-sys-admin-capabilities
+spec:
+  hostPID: true
+  containers:
+    - command:
+        - sh
+        - "-c"
+        - echo 'Hello' && sleep 1h
+      image: busybox
+      name: hello
+      securityContext:
+        capabilities:
+          add:
+            - SYS_PTRACE
+    - command:
+        - sh
+        - "-c"
+        - echo 'Hello' && sleep 1h
+      image: busybox
+      name: hello1
+      securityContext:
+        capabilities:
+          add:
+            - SYS_PTRACE
+
+
