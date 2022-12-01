@@ -44,10 +44,10 @@ func (bs *Scanner) Scan(ctx context.Context, iacFile api.IAC) ([]Result, error) 
 
 	// parse
 	input, err := parseHandle(file, iacFile.Path)
+	//log.Info(input)
 	if err != nil {
 		return nil, err
 	}
-
 	// prepare
 	compiler := ast.NewCompiler()
 	compiler.Compile(bs.Policies)
@@ -78,6 +78,7 @@ func (bs *Scanner) Scan(ctx context.Context, iacFile api.IAC) ([]Result, error) 
 			Risk
 			Rule
 		}{}
+
 		err := mapstructure.Decode(v, &d)
 		if err != nil {
 			continue
