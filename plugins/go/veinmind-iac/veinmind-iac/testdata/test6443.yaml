@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    creationTimestamp: "2022-11-25T06:54:35Z"
+    name: system:anonymous
+    resourceVersion: "1038"
+    uid: 06b9641d-b997-4062-a975-0310f5621cab
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-admin
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: system:anonymous
