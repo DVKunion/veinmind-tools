@@ -876,7 +876,7 @@ level = 'high'
 
 [[rules]]
 id = 125
-name = "Potentialclear STS token"
+name = "Potential STS token"
 description = "Might contain STS token"
 match = '''.*(security|Security).*(token|Token).*:.*$'''
 level = 'high'
