@@ -873,3 +873,10 @@ name = "Potential UCloud Accesskey"
 description = "Might contain UCloud Accesskey&SecretKey"
 match = '''.*(access|Secret｜Access｜ACCESS｜secret｜SECRET).*:\s*JDC_[A-z,0-9]{28}$'''
 level = 'high'
+
+[[rules]]
+id = 125
+name = "Potentialclear STS token"
+description = "Might contain STS token"
+match = '''.*(security|Security).*(token|Token).*:.*$'''
+level = 'high'
