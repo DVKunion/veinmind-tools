@@ -817,3 +817,66 @@ name = "Potential MSBuild publish profile"
 description = "Potential MSBuild publish profile"
 filepath = '''.*\/\.pubxml(\.user)?$'''
 level = 'low'
+
+[[rules]]
+id = 117
+name = "Potential Aliyun Accesskey"
+description = "Might contain Aliyun Accesskey&SecretKey"
+match = '''.*(access|SecretId).*:\s*LTAI5t.{18}$'''
+level = 'high'
+
+[[rules]]
+id = 118
+name = "Potential HuaWei Accesskey"
+description = "Might contain HuaWei Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*(?!AKIAYGPI7AC5)([A-Z,0-9]{12}).{8}$'''
+level = 'high'
+
+[[rules]]
+id = 119
+name = "Potential Tencent Accesskey"
+description = "Might contain Tencent Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*AKID.{32}$'''
+level = 'high'
+
+[[rules]]
+id = 120
+name = "Potential Qing Cloud Accesskey"
+description = "Might contain Qing Cloud Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*[A-Z]{20}$'''
+level = 'high'
+
+[[rules]]
+id = 121
+name = "Potential eCloud Accesskey"
+description = "Might contain eCloud Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*[A-Z,a-z,0-9]{28}$'''
+level = 'high'
+
+[[rules]]
+id = 122
+name = "Potential aws Accesskey"
+description = "Might contain aws Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*AKIAYGPI7AC5.{8}$'''
+level = 'high'
+
+[[rules]]
+id = 123
+name = "Potential Baidu Cloud Accesskey"
+description = "Might contain Baidu Cloud Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*[a-z,0-9]{32}$'''
+level = 'high'
+
+[[rules]]
+id = 124
+name = "Potential UCloud Accesskey"
+description = "Might contain UCloud Accesskey&SecretKey"
+match = '''.*(access|Secret|Access|ACCESS|secret|SECRET).*:\s*JDC_[A-z,0-9]{28}$'''
+level = 'high'
+
+[[rules]]
+id = 125
+name = "Potential STS token"
+description = "Might contain STS token"
+match = '''.*(security|Security).*(token|Token).*:.*$'''
+level = 'high'
