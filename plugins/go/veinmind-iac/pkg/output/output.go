@@ -114,3 +114,17 @@ func Align(key string, value string, tab int) string {
 		return key + ": " + Limit(value, tab-len(key)-2)
 	}
 }
+
+func StdoutRemote(results []scanner.Result) error {
+	for _, r := range results {
+		fmt.Fprintln(tabwTitle, "+", Repeat("-", (tab+2)*4), "+")
+		fmt.Fprintln(tabwBody, Align("| RuleID", r.Id, tab), "\t", Align("Rule Name", r.Name, tab), "\t", Align("Rule Level", r.Severity, tab), "\t", Align("Rule Type", r.Type, tab), "\t")
+		fmt.Fprintln(tabwBody, "+", Repeat("-", (tab+2)*4), "#")
+		fmt.Fprintln(tabwBody, "| Start Line", "\t", "End Line", "\t", "Details(namespace:podname)", "\t", "Code", "\t")
+		for _, risk := range r.Risks {
+			fmt.Fprintln(tabwBody, "|", risk.StartLine, "\t", risk.StartLine, "\t", Limit(risk.FilePath, tab), "\t", Limit(risk.Original, tab), "\t")
+		}
+		fmt.Fprintln(tabwBody, "+", Repeat("-", (tab+2)*4), "#")
+	}
+	return nil
+}

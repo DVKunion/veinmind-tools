@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/chaitin/libveinmind/go/plugin/log"
 	"github.com/chaitin/veinmind-common-go/service/report"
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-iac/pkg/output"
@@ -26,11 +27,86 @@ var (
 		PostRun: func(cmd *cmd.Command, args []string) {
 			format, _ := cmd.Flags().GetString("format")
 			spend := time.Since(scanStart)
-
 			output.Stream(spend, scanTotal, func() error {
 				switch format {
 				case output.STDOUT:
 					if err := output.Stdout(results); err != nil {
+						log.Error("Stdout error", err)
+						return err
+					}
+				case output.JSON:
+					if err := output.Json(results); err != nil {
+						log.Error("Export Results JSON False", err)
+						return err
+					}
+				}
+				return nil
+			})
+		},
+	}
+	scanIacByConfigCmd = &cmd.Command{
+		Use:   "remote",
+		Short: "scan iac by k8s config",
+		Run: func(cmd *cmd.Command, args []string) {
+			kubeconfig1, _ := cmd.Flags().GetString("kubeconfigfile")
+
+			scanner := &scanner.Scanner{
+				QueryPre: "data.brightMirror.",
+				Policies: make(map[string]*ast.Module),
+			}
+			scanner.LoadLibs()
+			res, err := scanner.ScanByConfig(cmd.Context(), kubeconfig1)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			uniqueAppend(res)
+			reportDetails := make([]report.AlertDetail, 0)
+			for _, data := range res {
+				for _, risk := range data.Risks {
+					reportDetails = append(reportDetails, report.AlertDetail{
+						IaCDetail: &report.IaCDetail{
+							RuleInfo: report.IaCRule{
+								Id:          data.Rule.Id,
+								Name:        data.Rule.Name,
+								Description: data.Rule.Description,
+								Reference:   data.Rule.Reference,
+								Severity:    data.Rule.Severity,
+								Solution:    data.Rule.Solution,
+								Type:        data.Rule.Type,
+							},
+							FileInfo: report.IaCData{
+								StartLine: risk.StartLine,
+								EndLine:   risk.EndLine,
+								FilePath:  risk.FilePath,
+								Original:  risk.Original,
+							},
+						},
+					})
+				}
+			}
+
+			//if you want display at runner report, you should send your result to report event
+			reportEvent := report.ReportEvent{
+				ID:             "",                       // image id info
+				Time:           time.Now(),               // report time, usually use time.Now
+				Level:          report.None,              // report event level
+				DetectType:     report.IaC,               // report scan object type
+				EventType:      report.Risk,              // report event type: Risk/Invasion/Info
+				AlertType:      report.IaCRisk,           // report alert type, we provide some clearly types of security events,
+				AlertDetails:   reportDetails,            // add report detail data in there
+				GeneralDetails: []report.GeneralDetail{}, // if your report event does not in alert type, you can use GeneralDetails type which consists of json bytes
+			}
+			err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
+			if err != nil {
+				fmt.Println(err)
+			}
+			format, _ := cmd.Flags().GetString("format")
+			spend := time.Since(scanStart)
+			output.Stream(spend, scanTotal, func() error {
+				switch format {
+				case output.STDOUT:
+					if err := output.StdoutRemote(results); err != nil {
 						log.Error("Stdout error", err)
 						return err
 					}
@@ -108,12 +184,15 @@ func scanIaC(c *cmd.Command, iac iacApi.IAC) error {
 
 func init() {
 	rootCmd.AddCommand(cmd.MapIACCommand(scanIaCCmd, scanIaC))
+	scanIaCCmd.AddCommand(scanIacByConfigCmd)
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-iac",
 		Author:      "veinmind-team",
 		Description: "veinmind-iac scan IAC file and discovery risks of them",
 	}))
 	scanIaCCmd.Flags().StringP("format", "f", "stdout", "export file format")
+	scanIacByConfigCmd.Flags().StringP("kubeconfigfile", "k", "/root/.kube/config", "k8s config file")
+	scanIacByConfigCmd.Flags().StringP("format", "f", "stdout", "export file format")
 }
 
 func uniqueAppend(res []scanner.Result) {

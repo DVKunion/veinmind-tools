@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	api "github.com/chaitin/libveinmind/go/iac"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
@@ -127,5 +128,25 @@ func kubernetes(file *os.File, path string) (interface{}, error) {
 		return nil, err
 	}
 	kubernetesInput.Path = path
+	return kubernetesInput, nil
+}
+
+func KubernetesByConfig(input string) (interface{}, error) {
+	//data, _ := json.Marshal(input)
+	datas := strings.Split(input, "^")
+	if len(datas) != 3 {
+		//fmt.Println("ssssss")
+		return nil, nil
+	}
+	namespace := datas[0]
+	podName := datas[1]
+	annotation := datas[2]
+
+	kubernetesInput := &KubernetesInput{}
+	err := json.Unmarshal([]byte(annotation), &kubernetesInput)
+	if err != nil {
+		return nil, err
+	}
+	kubernetesInput.Path = namespace + ":" + podName
 	return kubernetesInput, nil
 }
