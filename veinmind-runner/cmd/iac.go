@@ -11,6 +11,8 @@ import (
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/git"
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/plugind"
 	"github.com/google/uuid"
+	"github.com/thedevsaddam/gojsonq/v2"
+	"gopkg.in/yaml.v3"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -19,6 +21,29 @@ import (
 	"regexp"
 	"strings"
 )
+
+type KubernetesInput struct {
+	ApiVersion      string      `yaml:"apiVersion" json:"apiVersion"`
+	Path            string      `yaml:"path" json:"Path"`
+	Kind            string      `yaml:"kind" json:"kind"`
+	Meta            interface{} `yaml:"metadata" json:"metadata"`
+	Spec            interface{} `yaml:"spec" json:"spec"`
+	RoleRef         interface{} `yaml:"roleRef" json:"roleRef"`
+	Status          interface{} `yaml:"status" json:"status"`
+	Authentication  interface{} `yaml:"authentication" json:"authentication"`
+	Authorization   interface{} `yaml:"authorization" json:"authorization"`
+	Template        interface{} `yaml:"template" json:"template"`
+	Containers      interface{} `yaml:"containers" json:"containers"`
+	Args            interface{} `yaml:"args" json:"args"`
+	Command         interface{} `yaml:"command" json:"command"`
+	SecurityContext interface{} `yaml:"securityContext" json:"securityContext"`
+	Privileged      interface{} `yaml:"privileged" json:"privileged"`
+	Capabilities    interface{} `yaml:"capabilities" json:"capabilities"`
+	Add             interface{} `yaml:"add" json:"add"`
+	Volumes         interface{} `yaml:"volumes" json:"volumes"`
+	HostPath        interface{} `yaml:"hostPath" json:"hostPath"`
+	HostPID         bool        `yaml:"hostPID" json:"hostPID"`
+}
 
 var (
 	tempDir    = ""
@@ -40,12 +65,13 @@ var (
 		PostRunE: scanIacPostRunE,
 	}
 	scanK8sConfigCmd = &cmd.Command{
-		Use:      "remote",
+		Use:      "k8s",
 		Short:    "perform scan iac by k8s config",
 		PreRunE:  scanIacPreRunE,
 		RunE:     scanK8sConfig,
 		PostRunE: scanIacPostRunE,
 	}
+
 	// replace path
 	scanIacPreRunE = func(c *cmd.Command, args []string) error {
 		// init tempDir
@@ -222,18 +248,42 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 	for _, namespace := range namespaces {
 		optionForNamespace := kubernetes.WithNamespace(namespace)
 		if kubeC, errName := kubernetes.New(option, optionForNamespace); errName == nil {
-			if resource, errResource := kubeC.Resource("pods"); errResource == nil {
-				if pods, errPod := resource.List(scanCtx); errPod == nil {
+			if resourcePod, errResource := kubeC.Resource("pods"); errResource == nil {
+				if pods, errPod := resourcePod.List(scanCtx); errPod == nil {
 					for _, pod := range pods {
-						if podsConfig, errConfig := resource.Get(scanCtx, pod); errConfig == nil {
-							tmpConfigFile := path.Join(tempDir, strings.Join([]string{namespace, pod}, ":"))
-							if errWrite := ioutil.WriteFile(tmpConfigFile, podsConfig, fs.ModePerm); errWrite == nil {
-								iacList = append(iacList, iacApi.IAC{
-									Path: tmpConfigFile,
-									Type: iacApi.Kubernetes,
-								})
+						if podsConfig, errConfig := resourcePod.Get(scanCtx, pod); errConfig == nil {
+							writeFile(namespace, pod, podsConfig, &iacList)
+						}
+					}
+				}
+			}
+			if resourceConfigMaps, errResource := kubeC.Resource("configmaps"); errResource == nil {
+				if configmaps, errCM := resourceConfigMaps.List(scanCtx); errCM == nil {
+					for _, configmap := range configmaps {
+						if kubeletconfig, errConfig := resourceConfigMaps.Get(scanCtx, configmap); errConfig == nil {
+							name := gojsonq.New().FromString(string(kubeletconfig)).Find("data")
+							if names, err1 := name.(map[string]interface{}); err1 {
+								for _, value := range names {
+									kubernetesInput := &KubernetesInput{}
+									if err = yaml.Unmarshal([]byte(value.(string)), &kubernetesInput); err == nil {
+										writeFile(namespace, configmap, []byte(value.(string)), &iacList)
+									}
+
+								}
 							}
 						}
+
+					}
+				}
+			}
+		}
+	}
+	if kubeC, errName := kubernetes.New(option); errName == nil {
+		if resourceClusterRole, errResource := kubeC.Resource("clusterrolebindings"); errResource == nil {
+			if clusterRoleBindings, errClusterRolebinding := resourceClusterRole.List(scanCtx); errClusterRolebinding == nil {
+				for _, clusterRoleBinding := range clusterRoleBindings {
+					if clusterRolebindingConfig, errConfig := resourceClusterRole.Get(scanCtx, clusterRoleBinding); errConfig == nil {
+						writeFile("none", clusterRoleBinding, clusterRolebindingConfig, &iacList)
 					}
 				}
 			}
@@ -247,6 +297,15 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 	return nil
 }
 
+func writeFile(namespace string, name string, config []byte, iacList *[]iacApi.IAC) {
+	tmpConfigFile := path.Join(tempDir, strings.Join([]string{namespace, name}, ":"))
+	if errWrite := ioutil.WriteFile(tmpConfigFile, config, fs.ModePerm); errWrite == nil {
+		*iacList = append(*iacList, iacApi.IAC{
+			Path: tmpConfigFile,
+			Type: iacApi.Kubernetes,
+		})
+	}
+}
 func init() {
 	scanIaCCmd.AddCommand(cmd.MapIACCommand(scanLocalCmd, scanIaCFile))
 	scanIaCCmd.AddCommand(scanGitRepoCmd)

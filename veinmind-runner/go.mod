@@ -9,12 +9,14 @@ require (
 	github.com/containerd/containerd v1.6.9 // indirect
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/docker/docker v20.10.17+incompatible
+	github.com/ghodss/yaml v1.0.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
+	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	gotest.tools/v3 v3.1.0 // indirect
 )
