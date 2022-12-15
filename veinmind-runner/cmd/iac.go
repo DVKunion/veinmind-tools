@@ -252,7 +252,12 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 				if pods, errPod := resourcePod.List(scanCtx); errPod == nil {
 					for _, pod := range pods {
 						if podsConfig, errConfig := resourcePod.Get(scanCtx, pod); errConfig == nil {
-							writeFile(namespace, pod, podsConfig, &iacList)
+							if tmpfile, err := writeFile(namespace, pod, podsConfig); err == nil {
+								iacList = append(iacList, iacApi.IAC{
+									Path: tmpfile,
+									Type: iacApi.Kubernetes,
+								})
+							}
 						}
 					}
 				}
@@ -266,9 +271,13 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 								for _, value := range names {
 									kubernetesInput := &KubernetesInput{}
 									if err = yaml.Unmarshal([]byte(value.(string)), &kubernetesInput); err == nil {
-										writeFile(namespace, configmap, []byte(value.(string)), &iacList)
+										if tmpfile, err := writeFile(namespace, configmap, []byte(value.(string))); err == nil {
+											iacList = append(iacList, iacApi.IAC{
+												Path: tmpfile,
+												Type: iacApi.Kubernetes,
+											})
+										}
 									}
-
 								}
 							}
 						}
@@ -283,7 +292,12 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 			if clusterRoleBindings, errClusterRolebinding := resourceClusterRole.List(scanCtx); errClusterRolebinding == nil {
 				for _, clusterRoleBinding := range clusterRoleBindings {
 					if clusterRolebindingConfig, errConfig := resourceClusterRole.Get(scanCtx, clusterRoleBinding); errConfig == nil {
-						writeFile("none", clusterRoleBinding, clusterRolebindingConfig, &iacList)
+						if tmpfile, err := writeFile("none", clusterRoleBinding, clusterRolebindingConfig); err == nil {
+							iacList = append(iacList, iacApi.IAC{
+								Path: tmpfile,
+								Type: iacApi.Kubernetes,
+							})
+						}
 					}
 				}
 			}
@@ -297,13 +311,12 @@ func scanK8sConfig(c *cmd.Command, args []string) error {
 	return nil
 }
 
-func writeFile(namespace string, name string, config []byte, iacList *[]iacApi.IAC) {
+func writeFile(namespace string, name string, config []byte) (string, error) {
 	tmpConfigFile := path.Join(tempDir, strings.Join([]string{namespace, name}, ":"))
 	if errWrite := ioutil.WriteFile(tmpConfigFile, config, fs.ModePerm); errWrite == nil {
-		*iacList = append(*iacList, iacApi.IAC{
-			Path: tmpConfigFile,
-			Type: iacApi.Kubernetes,
-		})
+		return tmpConfigFile, nil
+	} else {
+		return "", errWrite
 	}
 }
 func init() {

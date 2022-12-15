@@ -9,7 +9,6 @@ require (
 	github.com/containerd/containerd v1.6.9 // indirect
 	github.com/distribution/distribution v2.8.1+incompatible
 	github.com/docker/docker v20.10.17+incompatible
-	github.com/ghodss/yaml v1.0.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/uuid v1.3.0
