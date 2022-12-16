@@ -66,15 +66,12 @@ func scanImage(c *cmd.Command, image api.Image) error {
 }
 
 func scanContainer(c *cmd.Command, container api.Container) error {
-
 	ref := container.Name()
-
 	// Get threads value
 	t, err := c.Flags().GetInt("threads")
 	if err != nil {
 		t = 5
 	}
-
 	log.Infof("Scan container: %#v\n", ref)
 	if err := cmd.ScanContainer(ctx, ps, container,
 		plugin.WithExecInterceptor(func(
