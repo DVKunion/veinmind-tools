@@ -337,21 +337,20 @@ func scanK8sConfig(c *cmd.Command, arg string) error {
 
 func ScanIaCParser(arg string) (Handler, error) {
 	var flag string
-	regex := "(kubernetes|host|git)?:?(.*)"
+	regex := "(kubernetes|host|repo)?:?(.*)"
 	compileRegex := regexp.MustCompile(regex)
 	matchArr := compileRegex.FindStringSubmatch(arg)
 	if matchArr[1] == "" { //没有协议头
-		flag = "host"
+		flag = HOST
 	} else {
 		flag = matchArr[1]
 	}
 	switch flag {
-	case "kubernetes":
+	case KUBERNETES:
 		return scanK8sConfig, nil
-	case "git":
-
+	case REPO:
 		return scanGitRepoIaCFile, nil
-	case "host":
+	case HOST:
 		return scanHostIaCFile, nil
 	}
 	return nil, nil

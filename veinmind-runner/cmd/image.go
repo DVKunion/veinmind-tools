@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/chaitin/libveinmind/go/cmd"
 	"github.com/chaitin/libveinmind/go/containerd"
 	"github.com/chaitin/libveinmind/go/docker"
@@ -14,22 +13,19 @@ import (
 	"sync"
 )
 
-var scanContainerCmd = &cmd.Command{
-	Use:      "container",
-	Short:    "perform container scan ",
+var scanImageCmd = &cmd.Command{
+	Use:      "image",
+	Short:    "perform image scan ",
 	PreRunE:  scanReportPreRunE,
-	RunE:     ScanContainer,
+	RunE:     ScanImage,
 	PostRunE: scanReportPostRunE,
 }
 
-func ScanContainer(c *cmd.Command, args []string) error {
+func ScanImage(c *cmd.Command, args []string) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(args))
 	for _, value := range args {
-		handler, err := ScanContainerParser(value)
-		if err != nil {
-			return err
-		}
+		handler := ScanImageParser(value)
 		go func(handler Handler, value string, wg *sync.WaitGroup) {
 			defer wg.Done()
 			err := handler(c, value)
@@ -42,21 +38,7 @@ func ScanContainer(c *cmd.Command, args []string) error {
 	return nil
 }
 
-func ScanContainerParser(arg string) (Handler, error) {
-	regex := "(docker|containerd)?:?(.*)"
-	compileRegex := regexp.MustCompile(regex)
-	matchArr := compileRegex.FindStringSubmatch(arg)
-	if matchArr[1] == "" || matchArr[1] == DOCKER {
-		return ScanDocker, nil
-	} else if matchArr[1] == CONTAINERD {
-		return ScanContainerd, nil
-	} else {
-		log.Errorf("please input right args! available: docker , containerd")
-	}
-	return nil, nil
-}
-
-func ScanDocker(c *cmd.Command, arg string) error {
+func ScanImageDocker(c *cmd.Command, arg string) error {
 	regex := "docker?:?(.*)"
 	compileRegex := regexp.MustCompile(regex)
 	matchArr := compileRegex.FindStringSubmatch(arg)
@@ -64,14 +46,16 @@ func ScanDocker(c *cmd.Command, arg string) error {
 	if err != nil {
 		return err
 	}
-	ids, err := r.FindContainerIDs(matchArr[1])
+	ids, err := r.FindImageIDs(matchArr[1])
 	for _, id := range ids {
-		runtime, err := r.OpenContainerByID(id)
-		if err != nil {
-			fmt.Println(err)
-			return err
+		image, err := r.OpenImageByID(id)
+		refs, err := image.RepoRefs()
+		ref := ""
+		if err == nil && len(refs) > 0 {
+			ref = refs[0]
+		} else {
+			ref = image.ID()
 		}
-		ref := runtime.Name()
 
 		// Get threads value
 		t, err := c.Flags().GetInt("threads")
@@ -79,8 +63,8 @@ func ScanDocker(c *cmd.Command, arg string) error {
 			t = 5
 		}
 
-		log.Infof("Scan container: %#v\n", ref)
-		if err := cmd.ScanContainer(c.Context(), ps, runtime,
+		log.Infof("Scan image: %#v\n", ref)
+		if err := cmd.ScanImage(ctx, ps, image,
 			plugin.WithExecInterceptor(func(
 				ctx context.Context, plug *plugin.Plugin, c *plugin.Command, next func(context.Context, ...plugin.ExecOption) error,
 			) error {
@@ -97,35 +81,38 @@ func ScanDocker(c *cmd.Command, arg string) error {
 			}), plugin.WithExecParallelism(t)); err != nil {
 			return err
 		}
+		return nil
 	}
 	return nil
-
 }
 
-func ScanContainerd(c *cmd.Command, arg string) error {
-	regex := "containerd:?(.*)"
+func ScanImageContainerd(c *cmd.Command, arg string) error {
+	regex := "containerd?:?(.*)"
 	compileRegex := regexp.MustCompile(regex)
 	matchArr := compileRegex.FindStringSubmatch(arg)
 	r, err := containerd.New()
 	if err != nil {
 		return err
 	}
-	ids, err := r.FindContainerIDs(matchArr[1])
+	ids, err := r.FindImageIDs(matchArr[1])
 	for _, id := range ids {
-		container, err := r.OpenContainerByID(id)
-		if err != nil {
-			return err
+		image, err := r.OpenImageByID(id)
+		refs, err := image.RepoRefs()
+		ref := ""
+		if err == nil && len(refs) > 0 {
+			ref = refs[0]
+		} else {
+			ref = image.ID()
 		}
-		ref := container.Name()
-		return nil
+
 		// Get threads value
 		t, err := c.Flags().GetInt("threads")
 		if err != nil {
 			t = 5
 		}
 
-		log.Infof("Scan container: %#v\n", ref)
-		if err := cmd.ScanContainer(c.Context(), ps, container,
+		log.Infof("Scan image: %#v\n", ref)
+		if err := cmd.ScanImage(ctx, ps, image,
 			plugin.WithExecInterceptor(func(
 				ctx context.Context, plug *plugin.Plugin, c *plugin.Command, next func(context.Context, ...plugin.ExecOption) error,
 			) error {
@@ -142,7 +129,28 @@ func ScanContainerd(c *cmd.Command, arg string) error {
 			}), plugin.WithExecParallelism(t)); err != nil {
 			return err
 		}
+		return nil
 	}
+	return nil
+}
 
+func ScanImageRegistry(c *cmd.Command, arg string) error {
+	return nil
+}
+
+func ScanImageParser(arg string) Handler {
+	regex := "(docker|containerd|tarball|registry):(.*)"
+	compileRegex := regexp.MustCompile(regex)
+	matchArr := compileRegex.FindStringSubmatch(arg)
+	switch matchArr[1] {
+	case DOCKER:
+		return ScanImageDocker
+	case CONTAINERD:
+		return ScanImageContainerd
+	case REGISTRY:
+		return ScanImageRegistry
+	default:
+		log.Errorf("please input right args, available: docker,containerd,registry")
+	}
 	return nil
 }

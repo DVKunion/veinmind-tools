@@ -20,6 +20,12 @@ import (
 
 const (
 	resourceDirectoryPath = "./resource"
+	DOCKER                = "docker"
+	CONTAINERD            = "containerd"
+	REGISTRY              = "registry"
+	REPO                  = "repo"
+	HOST                  = "host"
+	KUBERNETES            = "kubernetes"
 )
 
 type Handler func(c *cmd.Command, arg string) error
