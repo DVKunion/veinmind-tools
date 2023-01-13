@@ -3,12 +3,13 @@
 <h1 align="center"> veinmind-escalate </h1>
 
 <p align="center">
-veinmind-malicious is an escape risk scanning tool developed by Changting Technology
+veinmind-escalate is an escape risk scanning tool developed by Changting Technology
 </p>
 
 ## Features
 
 - Quickly scan containers for escape risks
+- Supports scan image
 - Supports the 'docker'/' containerd 'container runtime
 - Support JSON/CSV/HTML report formats
 
@@ -65,7 +66,7 @@ chmod +x parallel-container-run.sh && ./parallel-container-run.sh scan
 3. Specify the container name or container ID and scan
 
 ` ` `
-./veinmind-escalate scan container [imageID/imageName]
+./veinmind-escalate scan container [containerID/containerName]
 ` ` `
 
 4. Scan all local containers

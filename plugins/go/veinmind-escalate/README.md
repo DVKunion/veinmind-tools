@@ -2,12 +2,13 @@
 <h1 align="center"> veinmind-escalate </h1>
 
 <p align="center">
-veinmind-malicious 是由长亭科技自研的一款逃逸风险扫描工具 
+veinmind-escalate 是由长亭科技自研的一款逃逸风险扫描工具 
 </p>
 
 ## 功能特性
 
 - 快速扫描容器中的逃逸风险 
+- 支持扫描镜像
 - 支持 `docker`/`containerd` 容器运行时
 - 支持`JSON`/`CSV`/`HTML`等多种报告格式输出
 
@@ -64,7 +65,7 @@ chmod +x parallel-container-run.sh && ./parallel-container-run.sh scan
 3.指定容器名称或容器ID并扫描
 
 ```
-./veinmind-escalate scan container [imageID/imageName]
+./veinmind-escalate scan container [containerID/containerName]
 ```
 
 4.扫描所有本地容器
