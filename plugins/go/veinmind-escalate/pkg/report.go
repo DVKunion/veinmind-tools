@@ -55,7 +55,7 @@ func GenerateContainerRoport(container api.Container) error {
 				Level:      report.High,
 				DetectType: report.Container,
 				EventType:  report.Risk,
-				AlertType:  report.Weakpass,
+				AlertType:  report.Weakpass, //todo: change weakpass to report.escalate
 				GeneralDetails: []report.GeneralDetail{
 					detail,
 				},
