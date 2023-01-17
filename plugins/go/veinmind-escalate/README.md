@@ -31,11 +31,6 @@ veinmind-escalate 是由长亭科技自研的一款逃逸风险扫描工具
 chmod +x veinmind-escalate && ./veinmind-escalte extract && cd scripts && docker-compose pull && docker-compose up -d
 ```
 
-如果您使用的是`VirusTotal`，则需要在环境变量或`scripts/.env`文件中声明`VT_API_KEY`
-```
-export VT_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
 ### 安装方式二
 
 基于平行容器的模式，获取 `veinmind-escalate` 的镜像并启动

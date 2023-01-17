@@ -32,11 +32,6 @@ Make sure you have 'docker' and 'docker-compose' installed on your machine, and 
 chmod +x veinmind-escalate && ./veinmind-escalte extract && cd scripts && docker-compose pull && docker-compose up -d
 ` ` `
 
-If you're using VirusTotal, you'll need to declare the 'VT_API_KEY' in an environment variable or in your 'scripts/.env' file
-` ` `
-export VT_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-` ` `
-
 ### Installation 2
 
 Take an image of 'veinmind-escalate' and launch it based on the parallel container pattern
