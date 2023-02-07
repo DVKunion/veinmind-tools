@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"os"
 	"time"
 
@@ -14,15 +14,36 @@ import (
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-log4j2/pkg/scanner"
 )
 
+var ReferencesURLList = []string{
+	"https://www.kb.cert.org/vuls/id/930724",
+	"https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+	"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44228",
+	"https://tools.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
+}
+var reportService = &report.Service{}
 var rootCmd = &cmd.Command{}
+var scanCmd = &cmd.Command{
+	Use: "scan",
+}
 var scanImageCmd = &cmd.Command{
-	Use:   "scan-image",
+	Use:   "image",
 	Short: "scan image command",
 }
 
 var scanContainerCmd = &cmd.Command{
-	Use:   "scan-container",
+	Use:   "container",
 	Short: "scan container command",
+}
+
+func InitReferences() (res []event.References) {
+	for _, value := range ReferencesURLList {
+		tmpRef := event.References{
+			Type: "URL",
+			URL:  value,
+		}
+		res = append(res, tmpRef)
+	}
+	return res
 }
 
 func scanImage(c *cmd.Command, image api.Image) error {
@@ -38,28 +59,38 @@ func scanImage(c *cmd.Command, image api.Image) error {
 		log.Error("Scan Image Error")
 		return err
 	}
-
-	detail, err := json.Marshal(result)
-	if err != nil {
-		log.Error("Marshal Results Error")
-		return err
-	}
-
 	if len(result) > 0 {
-		reportEvent := report.ReportEvent{
-			ID:         image.ID(),
-			Object:     report.Object{Raw: image},
-			Time:       time.Now(),
-			Level:      report.Critical,
-			DetectType: report.Image,
-			EventType:  report.Risk,
-			GeneralDetails: []report.GeneralDetail{
-				detail,
-			},
+		for _, value := range result {
+			reportEvent := &event.Event{
+				&event.BasicInfo{
+					ID: image.ID(),
+					Object: event.Object{
+						Raw: image,
+					},
+					Time:       time.Now(),
+					Level:      event.Critical,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.VulnDetail{
+					ID:         "CVE-2021-44228",
+					Published:  time.Date(2021, 11, 26, 0, 0, 0, 0, time.Local),
+					Summary:    "Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled. From log4j 2.15.0, this behavior has been disabled by default. From version 2.16.0 (along with 2.12.2, 2.12.3, and 2.3.1), this functionality has been completely removed. Note that this vulnerability is specific to log4j-core and does not affect log4net, log4cxx, or other Apache Logging Services projects.",
+					Details:    value.File,
+					References: InitReferences(),
+					Source: event.Source{
+						Type:     "jar",
+						FilePath: value.DisplayPath,
+					},
+				}),
+			}
+			err := reportService.Client.Report(reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
-		return err
 	}
 
 	return nil
@@ -78,36 +109,48 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 		log.Error("Scan Image Error")
 		return err
 	}
-
-	detail, err := json.Marshal(result)
-	if err != nil {
-		log.Error("Marshal Results Error")
-		return err
-	}
-
 	if len(result) > 0 {
-		reportEvent := report.ReportEvent{
-			ID:         container.ID(),
-			Object:     report.Object{Raw: container},
-			Time:       time.Now(),
-			Level:      report.Critical,
-			DetectType: report.Container,
-			EventType:  report.Risk,
-			GeneralDetails: []report.GeneralDetail{
-				detail,
-			},
+		for _, value := range result {
+			reportEvent := &event.Event{
+				&event.BasicInfo{
+					ID: container.ID(),
+					Object: event.Object{
+						Raw: container,
+					},
+					Time:       time.Now(),
+					Level:      event.Critical,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.VulnDetail{
+					ID:         "CVE-2021-44228",
+					Published:  time.Date(2021, 11, 26, 0, 0, 0, 0, time.Local),
+					Summary:    "Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled. From log4j 2.15.0, this behavior has been disabled by default. From version 2.16.0 (along with 2.12.2, 2.12.3, and 2.3.1), this functionality has been completely removed. Note that this vulnerability is specific to log4j-core and does not affect log4net, log4cxx, or other Apache Logging Services projects.",
+					Details:    value.File,
+					References: InitReferences(),
+					Source: event.Source{
+						Type:     "jar",
+						FilePath: value.DisplayPath,
+					},
+				}),
+			}
+			err := reportService.Client.Report(reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
-		return err
 	}
 
 	return nil
 }
 
 func init() {
-	rootCmd.AddCommand(cmd.MapImageCommand(scanImageCmd, scanImage))
-	rootCmd.AddCommand(cmd.MapContainerCommand(scanContainerCmd, scanContainer))
+	rootCmd.AddCommand(scanCmd)
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scanContainerCmd, scanContainer), reportService))
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scanImage), reportService))
+
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-log4j2",
 		Author:      "veinmind-team",
