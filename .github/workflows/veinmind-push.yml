@@ -118,7 +118,7 @@ jobs:
     uses: ./.github/workflows/push-amd64.yml
     with:
       path: ./plugins/go/veinmind-sensitive
-      file: veinmind-sensitive-go
+      file: veinmind-sensitive
       CI_GOOS: linux
       CI_GOARCH: amd64
     secrets:

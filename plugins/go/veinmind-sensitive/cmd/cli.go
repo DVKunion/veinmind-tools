@@ -5,22 +5,20 @@ import (
 
 	"github.com/chaitin/libveinmind/go/cmd"
 	"github.com/chaitin/libveinmind/go/plugin"
-	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-sensitive/rule"
+	"github.com/chaitin/veinmind-common-go/service/report"
 )
 
 var (
-	rootCommand = &cmd.Command{}
-	scanCommand = &cmd.Command{
+	reportService = &report.Service{}
+	rootCommand   = &cmd.Command{}
+	scanCommand   = &cmd.Command{
 		Use:   "scan image sensitive info",
 		Short: "scan image sensitive info",
-		PreRun: func(cmd *cmd.Command, args []string) {
-			rule.Init()
-		},
 	}
 )
 
 func init() {
-	rootCommand.AddCommand(cmd.MapImageCommand(scanCommand, Scan))
+	rootCommand.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanCommand, Scan), reportService))
 	rootCommand.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-sensitive-file",
 		Author:      "veinmind-team",

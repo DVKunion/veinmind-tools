@@ -6,7 +6,7 @@ veinmind-webshell 是由长亭科技自研的一款镜像 Webshell 扫描工具
 
 ## 功能特性
 
-- 快速扫描镜像中的 Webshell
+- 快速扫描镜像/容器中的 Webshell
 - 支持`containerd`/`dockerd`容器运行时
 
 ## 兼容性
@@ -43,5 +43,5 @@ chmod +x parallel-container-run.sh && ./parallel-container-run.sh scan --token [
    ![](../../../docs/veinmind-webshell/readme3.png)
 3. 执行 `veinmind-webshell` 时填入创建的 `token`
 ```
-./veinmind-webshell scan --token [关山token]
+./veinmind-webshell scan image --token [关山token]
 ```

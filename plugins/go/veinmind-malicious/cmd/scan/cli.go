@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	_ "net/http/pprof"
 	"os"
 	"path"
@@ -27,8 +29,9 @@ import (
 var reportData = model.ReportData{}
 var reportLock sync.Mutex
 var scanStart = time.Now()
-
+var ReportService = &reportService.Service{}
 var rootCmd = &cmd.Command{}
+var scanCmd = &cmd.Command{Use: "scan"}
 var extractCmd = &cmd.Command{
 	Use:   "extract",
 	Short: "Extract config file",
@@ -37,8 +40,8 @@ var extractCmd = &cmd.Command{
 		return nil
 	},
 }
-var scanCmd = &cmd.Command{
-	Use:   "scan",
+var scanImageCmd = &cmd.Command{
+	Use:   "image",
 	Short: "Scan image malicious files",
 	PostRun: func(cmd *cmd.Command, args []string) {
 		// 计算扫描数据
@@ -66,22 +69,23 @@ var scanCmd = &cmd.Command{
 }
 
 func scan(_ *cmd.Command, image api.Image) error {
+
 	result, err := malicious.Scan(image)
 	if err != nil {
 		log.Error(err)
 		return nil
 	}
-
+	fmt.Println(result.MaliciousFileCount)
 	reportLock.Lock()
 	reportData.ScanImageResult = append(reportData.ScanImageResult, result)
 	reportLock.Unlock()
 
 	// result event
 	if result.MaliciousFileCount > 0 {
-		details := []reportService.AlertDetail{}
 		for _, l := range result.Layers {
 			if len(l.MaliciousFileInfos) > 0 {
 				for _, mr := range l.MaliciousFileInfos {
+
 					f, err := image.Open(mr.RelativePath)
 					if err != nil {
 						log.Error(err)
@@ -94,12 +98,20 @@ func scan(_ *cmd.Command, image api.Image) error {
 						continue
 					}
 					fSys := fStat.Sys().(*syscall.Stat_t)
-
-					details = append(details, reportService.AlertDetail{
-						MaliciousFileDetail: &reportService.MaliciousFileDetail{
+					reportEvent := event.Event{
+						&event.BasicInfo{
+							ID:         image.ID(),
+							Object:     event.Object{Raw: image},
+							Time:       time.Now(),
+							Level:      event.High,
+							DetectType: event.Image,
+							EventType:  event.Risk,
+							AlertType:  event.MaliciousFile,
+						},
+						event.NewDetailInfo(&event.MaliciousFileDetail{
 							Engine:        mr.Engine,
 							MaliciousName: mr.Description,
-							FileDetail: reportService.FileDetail{
+							FileDetail: event.FileDetail{
 								Path: mr.RelativePath,
 								Perm: fStat.Mode(),
 								Size: fStat.Size(),
@@ -109,24 +121,14 @@ func scan(_ *cmd.Command, image api.Image) error {
 								Mtim: fSys.Mtim.Sec,
 								Atim: fSys.Atim.Sec,
 							},
-						},
-					})
+						}),
+					}
+					err = ReportService.Client.Report(&reportEvent)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
 				}
-			}
-		}
-		reportEvent := reportService.ReportEvent{
-			ID:           image.ID(),
-			Object:       reportService.Object{Raw: image},
-			Level:        reportService.High,
-			DetectType:   reportService.Image,
-			EventType:    reportService.Risk,
-			AlertType:    reportService.MaliciousFile,
-			AlertDetails: details,
-		}
-		if len(details) > 0 {
-			err = reportService.DefaultReportClient().Report(reportEvent)
-			if err != nil {
-				return err
 			}
 		}
 	}
@@ -135,14 +137,14 @@ func scan(_ *cmd.Command, image api.Image) error {
 }
 
 func init() {
-	rootCmd.AddCommand(cmd.MapImageCommand(scanCmd, scan))
+	rootCmd.AddCommand(scanCmd)
+	scanCmd.AddCommand(reportService.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scan), ReportService))
 	rootCmd.AddCommand(extractCmd)
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-malicious",
 		Author:      "veinmind-team",
 		Description: "veinmind-malicious scanner image malicious file",
 	}))
-	scanCmd.Flags().StringP("format", "f", "html", "report format for scan report")
 	scanCmd.Flags().StringP("name", "n", "report", "report name for scan report")
 	scanCmd.Flags().StringP("output", "o", ".", "output path for report")
 }

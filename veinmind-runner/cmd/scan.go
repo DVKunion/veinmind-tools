@@ -8,13 +8,13 @@ import (
 	"github.com/chaitin/libveinmind/go/cmd"
 	"github.com/chaitin/libveinmind/go/plugin"
 	"github.com/chaitin/veinmind-common-go/service/report"
+	"github.com/chaitin/veinmind-common-go/service/report/service"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/container"
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/log"
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/plugind"
-	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/reporter"
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/scan"
 	"github.com/chaitin/veinmind-tools/veinmind-runner/pkg/target"
 )
@@ -27,8 +27,7 @@ var (
 	ctx                   context.Context
 	serviceManager        *plugind.Manager
 	cancel                context.CancelFunc
-	runnerReporter        *reporter.Reporter
-	reportService         *report.ReportService
+	reportService         *report.Service
 	parallelContainerMode = container.InContainer()
 
 	scanCmd = &cmd.Command{
@@ -176,6 +175,13 @@ func scanPreRun(c *cmd.Command, args []string) error {
 		}
 	}
 
+	output, _ := c.Flags().GetString("output")
+	if parallelContainerMode {
+		output = filepath.Join(resourceDirectoryPath, output)
+	}
+	// Service client init
+	reportService = report.NewService(c.Context(), service.WithOutputDir(output), service.WithHtmlRender(), service.WithVerbose())
+	log.GetModule(log.CmdModuleKey).Info(reportService.Report)
 	// discover plugins
 	ctx = c.Context()
 	ctx, cancel = context.WithCancel(ctx)
@@ -197,33 +203,7 @@ func scanPreRun(c *cmd.Command, args []string) error {
 	}
 
 	// reporter channel listen
-	go runnerReporter.Listen()
-
-	// event channel listen
-	go func() {
-		for {
-			select {
-			case evt := <-reportService.EventChannel:
-				// iac need replace real path
-				if c.Name() == "iac" {
-					// replace temp path
-					if realID, err := filepath.Rel(tempDir, evt.ID); err == nil {
-						evt.ID = realID
-					}
-					for _, detail := range evt.AlertDetails {
-						if detail.IaCDetail != nil {
-							if realPath, err := filepath.Rel(tempDir, detail.IaCDetail.FileInfo.FilePath); err == nil {
-								detail.IaCDetail.FileInfo.FilePath = realPath
-							}
-						}
-					}
-				}
-				runnerReporter.EventChannel <- evt
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	go reportService.Listen()
 
 	return nil
 }
@@ -236,39 +216,7 @@ func scanPostRun(c *cmd.Command, _ []string) error {
 		}
 	}
 	// Stop reporter listen
-	runnerReporter.Close()
-
-	// Render with stdout
-	err := runnerReporter.Render(os.Stdout)
-	if err != nil {
-		log.GetModule(log.CmdModuleKey).Error(errors.Wrap(err, "can't write runner report to stdout"))
-	}
-	output, _ := c.Flags().GetString("output")
-	if parallelContainerMode {
-		output = filepath.Join(resourceDirectoryPath, output)
-	}
-	if _, err := os.Stat(output); errors.Is(err, os.ErrNotExist) {
-		f, err := os.Create(output)
-		if err != nil {
-			log.GetModule(log.CmdModuleKey).Error(err)
-		} else {
-			err = runnerReporter.Write(f)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		f, err := os.OpenFile(output, os.O_WRONLY, 0666)
-		if err != nil {
-			log.GetModule(log.CmdModuleKey).Error(err)
-		} else {
-			err = runnerReporter.Write(f)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
+	reportService.Close()
 	cancel()
 	serviceManager.Wait()
 
@@ -281,12 +229,7 @@ func scanPostRun(c *cmd.Command, _ []string) error {
 	if exitcode == 0 {
 		return nil
 	} else {
-		events, err := runnerReporter.Events()
-		if err != nil {
-			return err
-		}
-
-		if len(events) > 0 {
+		if len(reportService.EventPool.Events) > 0 {
 			os.Exit(exitcode)
 		} else {
 			return nil
