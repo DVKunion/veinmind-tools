@@ -12,9 +12,13 @@ import (
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-unsafe-mount/pkg/engine"
 )
 
+var reportService = &report.Service{}
 var rootCmd = &cmd.Command{}
+var scanCmd = &cmd.Command{
+	Use: "scan",
+}
 var scanContainerCmd = &cmd.Command{
-	Use:   "scan-container",
+	Use:   "container",
 	Short: "scan container command",
 }
 
@@ -35,7 +39,7 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 	}
 
 	for _, evt := range evts {
-		err := report.DefaultReportClient().Report(evt)
+		err := reportService.Client.Report(&evt)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -46,7 +50,8 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 }
 
 func init() {
-	rootCmd.AddCommand(cmd.MapContainerCommand(scanContainerCmd, scanContainer))
+	rootCmd.AddCommand(scanCmd)
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scanContainerCmd, scanContainer), reportService))
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-unsafe-mount",
 		Author:      "veinmind-team",
