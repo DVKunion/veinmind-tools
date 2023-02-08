@@ -1,16 +1,11 @@
 package pkg
 
 import (
-	"encoding/json"
-	"time"
-
 	api "github.com/chaitin/libveinmind/go"
-	"github.com/chaitin/veinmind-common-go/service/report"
-
-	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-escalate/models"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 )
 
-var res = []*models.EscalateResult{}
+var Result []*event.EscapeDetail
 
 type CheckFunc func(api.FileSystem) error
 
@@ -37,62 +32,14 @@ const (
 )
 
 func AddResult(path string, reason string, detail string) {
-	result := &models.EscalateResult{
+	result := &event.EscapeDetail{
 		Target: path,
 		Reason: reason,
 		Detail: detail,
 	}
-	res = append(res, result)
+	Result = append(Result, result)
 }
 
-func GenerateContainerRoport(container api.Container) error {
-	if len(res) > 0 {
-		detail, err := json.Marshal(res)
-		if err == nil {
-			Reportevent := report.ReportEvent{
-				ID:         container.ID(),
-				Time:       time.Now(),
-				Level:      report.High,
-				DetectType: report.Container,
-				EventType:  report.Risk,
-				AlertType:  report.Weakpass, //todo: change weakpass to report.escalate
-				GeneralDetails: []report.GeneralDetail{
-					detail,
-				},
-			}
-			err := report.DefaultReportClient().Report(Reportevent)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
-func GenerateImageRoport(image api.Image) error {
-	if len(res) > 0 {
-		detail, err := json.Marshal(res)
-		if err == nil {
-			Reportevent := report.ReportEvent{
-				ID:         image.ID(),
-				Time:       time.Now(),
-				Level:      report.High,
-				DetectType: report.Image,
-				EventType:  report.Risk,
-				AlertType:  report.Weakpass, //todo: change weakpass to escalate
-				GeneralDetails: []report.GeneralDetail{
-					detail,
-				},
-			}
-			err := report.DefaultReportClient().Report(Reportevent)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
 func FileClose(file api.File, err error) {
 	if err == nil {
 		file.Close()

@@ -110,7 +110,7 @@ func (task *tasks) check() error {
 		}
 		if morethan(cveBeginVersionsInt, []int{KernelVersion, MajorRevision, MinorRevision}, ver.BeginEqual) &&
 			lessthan(cveEndVersionsInt, []int{KernelVersion, MajorRevision, MinorRevision}, ver.EndEqual) {
-			AddResult("", CVEREASON+task.CVEinfo.CVENumber, "UnSafeKernelVersion "+versionString)
+			AddResult("KERNEL VERSION", CVEREASON+task.CVEinfo.CVENumber, "UnSafeKernelVersion "+versionString)
 			return nil
 		}
 	}
