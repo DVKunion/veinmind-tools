@@ -107,26 +107,6 @@ func TransferAsset(res model.ScanResult) *event.AssetDetail {
 	return assetDetail
 }
 
-//func TransferVuln(res model.ScanResult) event.GeneralDetail {
-//	vulnList := make([]osv.Vulnerability, 0)
-//	for _, pkgInfo := range res.PackageInfos {
-//		for _, pkg := range pkgInfo.Packages {
-//			vulnList = append(vulnList, pkg.Vulnerabilities...)
-//		}
-//	}
-//	for _, app := range res.Applications {
-//		for _, pkg := range app.Libraries {
-//			vulnList = append(vulnList, pkg.Vulnerabilities...)
-//		}
-//	}
-//	data, err := json.Marshal(vulnList)
-//	if err != nil {
-//		log.Error(err)
-//		return nil
-//	}
-//	return data
-//}
-
 func transferPackage(res model.ScanResult) []event.AssetPackageDetails {
 	var assetPackageDetailsList []event.AssetPackageDetails
 	var assetPackageDetails []event.AssetPackageDetail
@@ -158,39 +138,6 @@ func transferPackage(res model.ScanResult) []event.AssetPackageDetails {
 
 	return assetPackageDetailsList
 }
-
-//func transferApplication(res model.ScanResult) []event.AssetApplicationDetails {
-//	var assetApplicationDetailsList []event.AssetApplicationDetails
-//	var assetPackageDetails []report.AssetPackageDetail
-//
-//	for _, app := range res.Applications {
-//		for i, pkg := range app.Libraries {
-//			// temp arch format
-//			if pkg.Arch == "" || pkg.Arch == "None" {
-//				app.Libraries[i].Arch = defaultArch
-//			}
-//			assetPackageDetails = append(assetPackageDetails, report.AssetPackageDetail{
-//				Name:       pkg.Name,
-//				Version:    pkg.Version,
-//				Release:    pkg.Release,
-//				Epoch:      pkg.Epoch,
-//				Arch:       app.Libraries[i].Arch,
-//				SrcName:    pkg.SrcName,
-//				SrcEpoch:   pkg.SrcEpoch,
-//				SrcRelease: pkg.SrcRelease,
-//				SrcVersion: pkg.SrcVersion,
-//			})
-//		}
-//		assetApplicationDetailsList = append(assetApplicationDetailsList, report.AssetApplicationDetails{
-//			Type:     app.Type,
-//			FilePath: app.FilePath,
-//			Packages: assetPackageDetails,
-//		})
-//		assetPackageDetails = []report.AssetPackageDetail{}
-//	}
-//
-//	return assetApplicationDetailsList
-//}
 
 func parseResult(scanRes *analyzer.AnalysisResult) model.ScanResult {
 	osInfo := &types.OS{}
