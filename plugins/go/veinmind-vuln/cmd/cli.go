@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"os"
 	"time"
 
@@ -16,10 +17,11 @@ import (
 )
 
 var (
-	results   = []model.ScanResult{}
-	scanStart = time.Now()
-	rootCmd   = &cmd.Command{}
-	post      = func(cmd *cmd.Command, args []string) {
+	reportService = &report.Service{}
+	results       = []model.ScanResult{}
+	scanStart     = time.Now()
+	rootCmd       = &cmd.Command{}
+	post          = func(cmd *cmd.Command, args []string) {
 		format, _ := cmd.Flags().GetString("format")
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		onlyAsset, _ := cmd.Flags().GetBool("only-asset")
@@ -97,44 +99,148 @@ func scanImage(c *cmd.Command, image api.Image) error {
 	results = append(results, res)
 
 	if onlyAsset {
-		reportEvent := report.ReportEvent{
-			ID:         image.ID(),
-			Object:     report.Object{Raw: image},
-			Time:       time.Now(),
-			Level:      report.None,
-			DetectType: report.Image,
-			EventType:  report.Info,
-			AlertType:  report.Asset,
-			AlertDetails: []report.AlertDetail{
-				{
-					AssetDetail: scanner.TransferAsset(res),
-				},
+		reportEvent := event.Event{
+			&event.BasicInfo{
+				ID:         image.ID(),
+				Object:     event.Object{Raw: image},
+				Time:       time.Now(),
+				Level:      event.None,
+				DetectType: event.Image,
+				EventType:  event.Info,
+				AlertType:  event.Asset,
+			},
+			&event.DetailInfo{
+				AlertDetail: scanner.TransferAsset(res),
 			},
 		}
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
-		if err != nil {
-			return err
-		}
-	}
-	if res.CveTotal > 0 {
-		reportEvent := report.ReportEvent{
-			ID:         image.ID(),
-			Object:     report.Object{Raw: image},
-			Time:       time.Now(),
-			Level:      report.High,
-			DetectType: report.Image,
-			EventType:  report.Risk,
-			AlertType:  report.Vulnerability,
-			GeneralDetails: []report.GeneralDetail{
-				scanner.TransferVuln(res),
-			},
-		}
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
+		err = reportService.Client.Report(&reportEvent)
 		if err != nil {
 			return err
 		}
 	}
 
+	if res.CveTotal > 0 {
+		for _, pkgInfo := range res.PackageInfos {
+			for _, pkg := range pkgInfo.Packages {
+				for _, vuln := range pkg.Vulnerabilities {
+
+					references := make([]event.References, 0)
+					for _, value := range vuln.References {
+						tmp := event.References{
+							Type: value.Type,
+							URL:  value.URL,
+						}
+						references = append(references, tmp)
+					}
+					reportEvent := event.Event{
+						&event.BasicInfo{
+							ID:         image.ID(),
+							Object:     event.NewObject(image),
+							Time:       time.Now(),
+							Level:      event.High,
+							DetectType: event.Image,
+							EventType:  event.Risk,
+							AlertType:  event.Vulnerability,
+						},
+						event.NewDetailInfo(&event.VulnDetail{
+							ID:         vuln.ID,
+							Published:  vuln.Published,
+							Aliases:    vuln.GetAliases(),
+							Summary:    vuln.Summary,
+							Details:    vuln.Details,
+							References: references,
+							Source: event.Source{
+								OS:       event.AssetOSDetail(*res.OSInfo),
+								Type:     "os-pkg",
+								FilePath: pkg.FilePath,
+								Packages: event.AssetPackageDetail{
+									Name:            pkg.Name,
+									Version:         pkg.Version,
+									Release:         pkg.Release,
+									Epoch:           pkg.Epoch,
+									Arch:            pkg.Arch,
+									SrcName:         pkg.SrcName,
+									SrcVersion:      pkg.SrcVersion,
+									SrcRelease:      pkg.SrcRelease,
+									SrcEpoch:        pkg.SrcEpoch,
+									Modularitylabel: pkg.Modularitylabel,
+									Indirect:        pkg.Indirect,
+									License:         pkg.License,
+									Layer:           pkg.Layer.Digest,
+								},
+							},
+						}),
+					}
+
+					err := reportService.Client.Report(&reportEvent)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
+				}
+			}
+		}
+		for _, appInfo := range res.Applications {
+			for _, app := range appInfo.Libraries {
+				for _, vuln := range app.Vulnerabilities {
+
+					references := make([]event.References, 0)
+					for _, value := range vuln.References {
+						tmp := event.References{
+							Type: value.Type,
+							URL:  value.URL,
+						}
+						references = append(references, tmp)
+					}
+					reportEvent := event.Event{
+						&event.BasicInfo{
+							ID:         image.ID(),
+							Object:     event.NewObject(image),
+							Time:       time.Now(),
+							Level:      event.High,
+							DetectType: event.Image,
+							EventType:  event.Risk,
+							AlertType:  event.Vulnerability,
+						},
+						event.NewDetailInfo(&event.VulnDetail{
+							ID:         vuln.ID,
+							Published:  vuln.Published,
+							Aliases:    vuln.GetAliases(),
+							Summary:    vuln.Summary,
+							Details:    vuln.Details,
+							References: references,
+							Source: event.Source{
+								OS:       event.AssetOSDetail(*res.OSInfo),
+								Type:     appInfo.Type,
+								FilePath: app.FilePath,
+								Packages: event.AssetPackageDetail{
+									Name:            app.Name,
+									Version:         app.Version,
+									Release:         app.Release,
+									Epoch:           app.Epoch,
+									Arch:            app.Arch,
+									SrcName:         app.SrcName,
+									SrcVersion:      app.SrcVersion,
+									SrcRelease:      app.SrcRelease,
+									SrcEpoch:        app.SrcEpoch,
+									Modularitylabel: app.Modularitylabel,
+									Indirect:        app.Indirect,
+									License:         app.License,
+									Layer:           app.Layer.Digest,
+								},
+							},
+						}),
+					}
+
+					err := reportService.Client.Report(&reportEvent)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -162,42 +268,144 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 	results = append(results, res)
 
 	if onlyAsset {
-		reportEvent := report.ReportEvent{
-			ID:         container.ID(),
-			Object:     report.Object{Raw: container},
-			Time:       time.Now(),
-			Level:      report.None,
-			DetectType: report.Container,
-			EventType:  report.Info,
-			AlertType:  report.Asset,
-			AlertDetails: []report.AlertDetail{
-				{
-					AssetDetail: scanner.TransferAsset(res),
-				},
+		reportEvent := event.Event{
+			&event.BasicInfo{
+				ID:         container.ID(),
+				Object:     event.Object{Raw: container},
+				Time:       time.Now(),
+				Level:      event.None,
+				DetectType: event.Image,
+				EventType:  event.Info,
+				AlertType:  event.Asset,
+			},
+			&event.DetailInfo{
+				AlertDetail: scanner.TransferAsset(res),
 			},
 		}
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
+		err = reportService.Client.Report(&reportEvent)
 		if err != nil {
 			return err
 		}
 	}
 
 	if res.CveTotal > 0 {
-		reportEvent := report.ReportEvent{
-			ID:         container.ID(),
-			Object:     report.Object{Raw: container},
-			Time:       time.Now(),
-			Level:      report.High,
-			DetectType: report.Container,
-			EventType:  report.Risk,
-			AlertType:  report.Vulnerability,
-			GeneralDetails: []report.GeneralDetail{
-				scanner.TransferVuln(res),
-			},
+		for _, pkgInfo := range res.PackageInfos {
+			for _, pkg := range pkgInfo.Packages {
+				for _, vuln := range pkg.Vulnerabilities {
+					references := make([]event.References, 0)
+					for _, value := range vuln.References {
+						tmp := event.References{
+							Type: value.Type,
+							URL:  value.URL,
+						}
+						references = append(references, tmp)
+					}
+					reportEvent := event.Event{
+						&event.BasicInfo{
+							ID:         container.ID(),
+							Object:     event.NewObject(container),
+							Time:       time.Now(),
+							Level:      event.High,
+							DetectType: event.Image,
+							EventType:  event.Risk,
+							AlertType:  event.Vulnerability,
+						},
+						event.NewDetailInfo(&event.VulnDetail{
+							ID:         vuln.ID,
+							Published:  vuln.Published,
+							Aliases:    vuln.GetAliases(),
+							Summary:    vuln.Summary,
+							Details:    vuln.Details,
+							References: references,
+							Source: event.Source{
+								OS:       event.AssetOSDetail(*res.OSInfo),
+								Type:     "os-pkg",
+								FilePath: pkg.FilePath,
+								Packages: event.AssetPackageDetail{
+									Name:            pkg.Name,
+									Version:         pkg.Version,
+									Release:         pkg.Release,
+									Epoch:           pkg.Epoch,
+									Arch:            pkg.Arch,
+									SrcName:         pkg.SrcName,
+									SrcVersion:      pkg.SrcVersion,
+									SrcRelease:      pkg.SrcRelease,
+									SrcEpoch:        pkg.SrcEpoch,
+									Modularitylabel: pkg.Modularitylabel,
+									Indirect:        pkg.Indirect,
+									License:         pkg.License,
+									Layer:           pkg.Layer.Digest,
+								},
+							},
+						}),
+					}
+					err := reportService.Client.Report(&reportEvent)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
+				}
+			}
 		}
-		err = report.DefaultReportClient(report.WithDisableLog()).Report(reportEvent)
-		if err != nil {
-			return err
+		for _, appInfo := range res.Applications {
+			for _, app := range appInfo.Libraries {
+				for _, vuln := range app.Vulnerabilities {
+
+					references := make([]event.References, 0)
+					for _, value := range vuln.References {
+						tmp := event.References{
+							Type: value.Type,
+							URL:  value.URL,
+						}
+						references = append(references, tmp)
+					}
+					reportEvent := event.Event{
+						&event.BasicInfo{
+							ID:         container.ID(),
+							Object:     event.NewObject(container),
+							Time:       time.Now(),
+							Level:      event.High,
+							DetectType: event.Image,
+							EventType:  event.Risk,
+							AlertType:  event.Vulnerability,
+						},
+						event.NewDetailInfo(&event.VulnDetail{
+							ID:         vuln.ID,
+							Published:  vuln.Published,
+							Aliases:    vuln.GetAliases(),
+							Summary:    vuln.Summary,
+							Details:    vuln.Details,
+							References: references,
+							Source: event.Source{
+								OS:       event.AssetOSDetail(*res.OSInfo),
+								Type:     appInfo.Type,
+								FilePath: app.FilePath,
+								Packages: event.AssetPackageDetail{
+									Name:            app.Name,
+									Version:         app.Version,
+									Release:         app.Release,
+									Epoch:           app.Epoch,
+									Arch:            app.Arch,
+									SrcName:         app.SrcName,
+									SrcVersion:      app.SrcVersion,
+									SrcRelease:      app.SrcRelease,
+									SrcEpoch:        app.SrcEpoch,
+									Modularitylabel: app.Modularitylabel,
+									Indirect:        app.Indirect,
+									License:         app.License,
+									Layer:           app.Layer.Digest,
+								},
+							},
+						}),
+					}
+
+					err := reportService.Client.Report(&reportEvent)
+					if err != nil {
+						log.Error(err)
+						continue
+					}
+				}
+			}
 		}
 	}
 
@@ -206,9 +414,8 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 
 func init() {
 	rootCmd.AddCommand(scanCmd)
-
-	scanCmd.AddCommand(cmd.MapImageCommand(scanImageCmd, scanImage))
-	scanCmd.AddCommand(cmd.MapContainerCommand(scanContainerCmd, scanContainer))
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scanImage), reportService))
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scanContainerCmd, scanContainer), reportService))
 
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-vuln",
@@ -216,7 +423,6 @@ func init() {
 		Description: "veinmind-vuln scanner image os/pkg/app info and vulns",
 	}))
 	scanCmd.PersistentFlags().Int64P("threads", "t", 5, "scan file threads")
-	scanCmd.PersistentFlags().StringP("format", "f", "stdout", "epxort file format")
 	scanCmd.PersistentFlags().BoolP("verbose", "v", false, "show detail Info")
 	scanCmd.PersistentFlags().String("type", "all", "show specify type detail Info")
 	scanCmd.PersistentFlags().Bool("only-asset", false, "only scan asset info")
