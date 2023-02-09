@@ -60,36 +60,7 @@ docker run --rm -it --mount 'type=bind,source=/,target=/host,readonly,bind-propa
 2. Click on the bottom left corner to organize the configuration and create the API Token (the basic version is limited to 100 times per day, and the advanced version can be obtained by contacting the Wenmai assistant/Baichuan platform)
    ![](../../../docs/veinmind-webshell/readme2.png)
    ![](../../../docs/veinmind-webshell/readme3.png)
-3. Scan the specified image with a token
-```
-./veinmind-webshell scan image [imageID/imageName] --token [Guan Shan token]
-```
-   ![](../../../docs/veinmind-webshell/scan_image_1.jpg)
-4. Scan all local images using token
+3. Execute 'veinmind-webshell' with the created 'token'
 ```
 ./veinmind-webshell scan image --token [Guan Shan token]
 ```
-   ![](../../../docs/veinmind-webshell/scan_image_2.jpg)
-
-5. Scan the specified container with a token
-```
-./veinmind - webshell scan the container containerID/containerName - token [guanshan token]
-```
-   ![](.. /.. /.. /docs/veinmind-webshell/scan_container_1.jpg)
-
-6.Scan all local containers using token
-```
- ./veinmind-webshell scan container --token [token]
- ```
-   ![](../../../docs/veinmind-webshell/scan_container_2.jpg)
-
-Specify the output format
-Supported output formats:
-- html
-- json
-- cli (default)
-```
-./veinmind-webshell scan container [containerID/containerName] --token [token] -f html
-```
-  The resulting result.html looks like this:
-  ![](../../../docs/veinmind-webshell/format.jpg)
