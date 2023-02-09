@@ -14,7 +14,6 @@ import (
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	api "github.com/chaitin/libveinmind/go"
 	"github.com/chaitin/libveinmind/go/plugin/log"
-	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/model"
@@ -94,50 +93,6 @@ func ScanAsset(fileSystem api.FileSystem, parallel int64) *analyzer.AnalysisResu
 	wg.Wait()
 	res.Sort()
 	return res
-}
-
-func TransferAsset(res model.ScanResult) *event.AssetDetail {
-	assetDetail := &event.AssetDetail{
-		OS: event.AssetOSDetail{
-			Family: res.OSInfo.Family,
-			Name:   res.OSInfo.Name,
-			Eosl:   res.OSInfo.Eosl,
-		},
-		PackageInfos: transferPackage(res),
-	}
-	return assetDetail
-}
-
-func transferPackage(res model.ScanResult) []event.AssetPackageDetails {
-	var assetPackageDetailsList []event.AssetPackageDetails
-	var assetPackageDetails []event.AssetPackageDetail
-
-	for _, pkgInfo := range res.PackageInfos {
-		for i, pkg := range pkgInfo.Packages {
-			// temp arch format
-			if pkg.Arch == "" || pkg.Arch == "None" {
-				pkgInfo.Packages[i].Arch = defaultArch
-			}
-			assetPackageDetails = append(assetPackageDetails, event.AssetPackageDetail{
-				Name:       pkg.Name,
-				Version:    pkg.Version,
-				Release:    pkg.Release,
-				Epoch:      pkg.Epoch,
-				Arch:       pkgInfo.Packages[i].Arch,
-				SrcName:    pkg.SrcName,
-				SrcEpoch:   pkg.SrcEpoch,
-				SrcRelease: pkg.SrcRelease,
-				SrcVersion: pkg.SrcVersion,
-			})
-		}
-		assetPackageDetailsList = append(assetPackageDetailsList, event.AssetPackageDetails{
-			FilePath: pkgInfo.FilePath,
-			Packages: assetPackageDetails,
-		})
-		assetPackageDetails = []event.AssetPackageDetail{}
-	}
-
-	return assetPackageDetailsList
 }
 
 func parseResult(scanRes *analyzer.AnalysisResult) model.ScanResult {

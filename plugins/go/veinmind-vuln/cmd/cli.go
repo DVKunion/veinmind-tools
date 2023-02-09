@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	api "github.com/chaitin/libveinmind/go"
@@ -37,6 +38,15 @@ var (
 	}
 )
 
+func isIn(str string, list []string) bool {
+	for _, value := range list {
+		if str == value {
+			return true
+		}
+	}
+	return false
+}
+
 func scanImage(c *cmd.Command, image api.Image) error {
 	defer func() {
 		err := image.Close()
@@ -48,6 +58,12 @@ func scanImage(c *cmd.Command, image api.Image) error {
 	threads, _ := c.Flags().GetInt64("threads")
 	onlyAsset, _ := c.Flags().GetBool("only-asset")
 	verbose, _ := c.Flags().GetBool("verbose")
+	filterType, _ := c.Flags().GetString("type")
+	filterTypeList := make([]string, 0)
+	if filterType != "all" {
+		types := strings.Split(filterType, ",")
+		filterTypeList = append(filterTypeList, types...)
+	}
 	res, err := scanner.ScanImage(image, threads)
 	if err != nil {
 		log.Error("Scan Image Error")
@@ -61,28 +77,115 @@ func scanImage(c *cmd.Command, image api.Image) error {
 	results = append(results, res)
 
 	if onlyAsset {
-		reportEvent := event.Event{
-			&event.BasicInfo{
-				ID:         image.ID(),
-				Object:     event.Object{Raw: image},
-				Time:       time.Now(),
-				Level:      event.None,
-				DetectType: event.Image,
-				EventType:  event.Info,
-				AlertType:  event.Asset,
-			},
-			&event.DetailInfo{
-				AlertDetail: scanner.TransferAsset(res),
-			},
+		for _, pkgInfo := range res.PackageInfos {
+			if filterType != "all" && !isIn("os-pkg", filterTypeList) {
+				break
+			}
+			var assetPackageDetailsList []event.AssetPackageDetails
+			var assetPackageDetailList []event.AssetPackageDetail
+			for _, pkg := range pkgInfo.Packages {
+				assetPackageDetailList = append(assetPackageDetailList, event.AssetPackageDetail{
+					Name:            pkg.Name,
+					Version:         pkg.Version,
+					Release:         pkg.Release,
+					Epoch:           pkg.Epoch,
+					Arch:            pkg.Arch,
+					SrcName:         pkg.SrcName,
+					SrcVersion:      pkg.SrcVersion,
+					SrcRelease:      pkg.SrcRelease,
+					SrcEpoch:        pkg.SrcEpoch,
+					Modularitylabel: pkg.Modularitylabel,
+					Indirect:        pkg.Indirect,
+					License:         pkg.License,
+					Layer:           pkg.Layer.Digest,
+				})
+			}
+			assetPackageDetailsList = append(assetPackageDetailsList, event.AssetPackageDetails{
+				Type:     "ok-pkg",
+				FilePath: pkgInfo.FilePath,
+				Packages: assetPackageDetailList,
+			})
+
+			reportEvent := event.Event{
+				&event.BasicInfo{
+					ID:         image.ID(),
+					Object:     event.NewObject(image),
+					Time:       time.Now(),
+					Level:      event.High,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.AssetDetail{
+					OS:           event.AssetOSDetail(*res.OSInfo),
+					PackageInfos: assetPackageDetailsList,
+				}),
+			}
+
+			err := reportService.Client.Report(&reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-		err = reportService.Client.Report(&reportEvent)
-		if err != nil {
-			return err
+		for _, appInfo := range res.Applications {
+			if filterType != "all" && !isIn(appInfo.Type, filterTypeList) {
+				continue
+			}
+			var assetPackageDetailsList []event.AssetPackageDetails
+			var assetPackageDetailList []event.AssetPackageDetail
+			for _, library := range appInfo.Libraries {
+				assetPackageDetailList = append(assetPackageDetailList, event.AssetPackageDetail{
+					Name:            library.Name,
+					Version:         library.Version,
+					Release:         library.Release,
+					Epoch:           library.Epoch,
+					Arch:            library.Arch,
+					SrcName:         library.SrcName,
+					SrcVersion:      library.SrcVersion,
+					SrcRelease:      library.SrcRelease,
+					SrcEpoch:        library.SrcEpoch,
+					Modularitylabel: library.Modularitylabel,
+					Indirect:        library.Indirect,
+					License:         library.License,
+					Layer:           library.Layer.Digest,
+				})
+			}
+			assetPackageDetailsList = append(assetPackageDetailsList, event.AssetPackageDetails{
+				Type:     appInfo.Type,
+				FilePath: appInfo.FilePath,
+				Packages: assetPackageDetailList,
+			})
+
+			reportEvent := event.Event{
+				&event.BasicInfo{
+					ID:         image.ID(),
+					Object:     event.NewObject(image),
+					Time:       time.Now(),
+					Level:      event.High,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.AssetDetail{
+					OS:           event.AssetOSDetail(*res.OSInfo),
+					PackageInfos: assetPackageDetailsList,
+				}),
+			}
+
+			err := reportService.Client.Report(&reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
 	}
 
 	if res.CveTotal > 0 {
 		for _, pkgInfo := range res.PackageInfos {
+			if filterType != "all" && !isIn("ok-pkg", filterTypeList) {
+				break
+			}
 			for _, pkg := range pkgInfo.Packages {
 				for _, vuln := range pkg.Vulnerabilities {
 
@@ -143,6 +246,9 @@ func scanImage(c *cmd.Command, image api.Image) error {
 			}
 		}
 		for _, appInfo := range res.Applications {
+			if filterType != "all" && !isIn(appInfo.Type, filterTypeList) {
+				continue
+			}
 			for _, app := range appInfo.Libraries {
 				for _, vuln := range app.Vulnerabilities {
 
@@ -217,6 +323,12 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 	threads, _ := c.Flags().GetInt64("threads")
 	onlyAsset, _ := c.Flags().GetBool("only-asset")
 	verbose, _ := c.Flags().GetBool("verbose")
+	filterType, _ := c.Flags().GetString("type")
+	filterTypeList := make([]string, 0)
+	if filterType != "all" {
+		types := strings.Split(filterType, ",")
+		filterTypeList = append(filterTypeList, types...)
+	}
 	res, err := scanner.ScanContainer(container, threads)
 	if err != nil {
 		log.Error("Scan Image Error")
@@ -230,28 +342,115 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 	results = append(results, res)
 
 	if onlyAsset {
-		reportEvent := event.Event{
-			&event.BasicInfo{
-				ID:         container.ID(),
-				Object:     event.Object{Raw: container},
-				Time:       time.Now(),
-				Level:      event.None,
-				DetectType: event.Image,
-				EventType:  event.Info,
-				AlertType:  event.Asset,
-			},
-			&event.DetailInfo{
-				AlertDetail: scanner.TransferAsset(res),
-			},
+		for _, pkgInfo := range res.PackageInfos {
+			if filterType != "all" && !isIn("os-pkg", filterTypeList) {
+				break
+			}
+			var assetPackageDetailsList []event.AssetPackageDetails
+			var assetPackageDetailList []event.AssetPackageDetail
+			for _, library := range pkgInfo.Packages {
+				assetPackageDetailList = append(assetPackageDetailList, event.AssetPackageDetail{
+					Name:            library.Name,
+					Version:         library.Version,
+					Release:         library.Release,
+					Epoch:           library.Epoch,
+					Arch:            library.Arch,
+					SrcName:         library.SrcName,
+					SrcVersion:      library.SrcVersion,
+					SrcRelease:      library.SrcRelease,
+					SrcEpoch:        library.SrcEpoch,
+					Modularitylabel: library.Modularitylabel,
+					Indirect:        library.Indirect,
+					License:         library.License,
+					Layer:           library.Layer.Digest,
+				})
+			}
+			assetPackageDetailsList = append(assetPackageDetailsList, event.AssetPackageDetails{
+				Type:     "ok-pkg",
+				FilePath: pkgInfo.FilePath,
+				Packages: assetPackageDetailList,
+			})
+
+			reportEvent := event.Event{
+				&event.BasicInfo{
+					ID:         container.ID(),
+					Object:     event.NewObject(container),
+					Time:       time.Now(),
+					Level:      event.High,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.AssetDetail{
+					OS:           event.AssetOSDetail(*res.OSInfo),
+					PackageInfos: assetPackageDetailsList,
+				}),
+			}
+
+			err := reportService.Client.Report(&reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
-		err = reportService.Client.Report(&reportEvent)
-		if err != nil {
-			return err
+		for _, appInfo := range res.Applications {
+			if filterType != "all" && !isIn(appInfo.Type, filterTypeList) {
+				continue
+			}
+			var assetPackageDetailsList []event.AssetPackageDetails
+			var assetPackageDetailList []event.AssetPackageDetail
+			for _, library := range appInfo.Libraries {
+				assetPackageDetailList = append(assetPackageDetailList, event.AssetPackageDetail{
+					Name:            library.Name,
+					Version:         library.Version,
+					Release:         library.Release,
+					Epoch:           library.Epoch,
+					Arch:            library.Arch,
+					SrcName:         library.SrcName,
+					SrcVersion:      library.SrcVersion,
+					SrcRelease:      library.SrcRelease,
+					SrcEpoch:        library.SrcEpoch,
+					Modularitylabel: library.Modularitylabel,
+					Indirect:        library.Indirect,
+					License:         library.License,
+					Layer:           library.Layer.Digest,
+				})
+			}
+			assetPackageDetailsList = append(assetPackageDetailsList, event.AssetPackageDetails{
+				Type:     appInfo.Type,
+				FilePath: appInfo.FilePath,
+				Packages: assetPackageDetailList,
+			})
+
+			reportEvent := event.Event{
+				&event.BasicInfo{
+					ID:         container.ID(),
+					Object:     event.NewObject(container),
+					Time:       time.Now(),
+					Level:      event.High,
+					DetectType: event.Image,
+					EventType:  event.Risk,
+					AlertType:  event.Vulnerability,
+				},
+				event.NewDetailInfo(&event.AssetDetail{
+					OS:           event.AssetOSDetail(*res.OSInfo),
+					PackageInfos: assetPackageDetailsList,
+				}),
+			}
+
+			err := reportService.Client.Report(&reportEvent)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 		}
 	}
 
 	if res.CveTotal > 0 {
 		for _, pkgInfo := range res.PackageInfos {
+			if filterType != "all" && !isIn("os-pkg", filterTypeList) {
+				break
+			}
 			for _, pkg := range pkgInfo.Packages {
 				for _, vuln := range pkg.Vulnerabilities {
 					references := make([]event.References, 0)
@@ -310,6 +509,9 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 			}
 		}
 		for _, appInfo := range res.Applications {
+			if filterType != "all" && !isIn(appInfo.Type, filterTypeList) {
+				continue
+			}
 			for _, app := range appInfo.Libraries {
 				for _, vuln := range app.Vulnerabilities {
 
