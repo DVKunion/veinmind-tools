@@ -1,17 +1,15 @@
-# veinmind-escalate  
 
 <h1 align="center"> veinmind-escalate </h1>
 
 <p align="center">
-veinmind-escalate is an escape risk scanning tool developed by Changting Technology
+Veinmind-escalate is an escape risk scanning tool developed by Changting Technology.
 </p>
 
 ## Features
 
-- Quickly scan containers for escape risks
-- Supports scan image
-- Supports the 'docker'/' containerd 'container runtime
-- Support JSON/CSV/HTML report formats
+- quickly scan containers / images for escape risks.
+- supports `docker` / `containerd` container runtime.
+- multiple report formats such as `JSON` / `CLI` / `HTML` are supported
 
 ## Compatibility
 
@@ -20,52 +18,77 @@ veinmind-escalate is an escape risk scanning tool developed by Changting Technol
 - linux/arm64
 - linux/arm
 
-## Before we begin
+## # How to use.
 
-### Installation 1
+### Based on executable file.
 
-Please install ` libveinmind `, installation method can refer to [official documentation] (https://github.com/chaitin/libveinmind)
+Please install `libveinmind` first. For installation method, please see [official documentation] (https://github.com/chaitin/libveinmind)).
+#### Makefile one-button command.
 
-Make sure you have 'docker' and 'docker-compose' installed on your machine, and start 'ClamAV'.
+```
+Make run ARG= "scan xxx"
+```
+#### Compile executable files for scanning.
 
-` ` `
-chmod +x veinmind-escalate && ./veinmind-escalte extract && cd scripts && docker-compose pull && docker-compose up -d
-` ` `
+Compile executable file.
+```
+Make build.
+```
+Run the executable file to scan.
+```
+Chmod + x veinmind-escalate & &. / veinmind-escalate scan xxx.
+```
+### Based on parallel container mode.
+Make sure `docker` and `docker` and `dockere` are installed on the machine.
+#### Makefile one-button command.
+```
+Make run.docker ARG= "scan xxxx"
+```
+#### Build image for scanning.
+Build an `veinmind- escalate` image.
+```
+Make build.docker.
+```
+Run the container to scan.
+```
+Docker run-rm-it-mount 'type=bind,source=/,target=/host,readonly,bind-propagation=rslave' veinmind-escalate scan xxx.
+```
 
-### Installation 2
+## Using parameters.
 
-Take an image of 'veinmind-escalate' and launch it based on the parallel container pattern
-` ` `
-docker run --rm -it --mount 'type=bind,source=/,target=/host,readonly,bind-propagation=rslave' -v `pwd`:/tool/data  veinmind/veinmind-escalate scan
-` ` `
+1. Specify the image name or image ID and scan (the corresponding image needs to exist locally).
 
-Or use a script provided by the project
-` ` `
-chmod +x parallel-container-run.sh && ./parallel-container-run.sh scan
-` ` `
+```
+. / veinmind-escalate scan image [imageID/imageName].
+```
+![](../../../docs/veinmind-escalate/veinmind-escalate_scan_image_01.jpg)
 
-## Usage
+2. Scan all local images.
 
-1. Specify the image name or image ID and scan (if the image exists locally)
+```
+. / veinmind-escalate scan image.
+```
+![](../../../docs/veinmind-escalate/veinmind-escalate_scan_image_02.jpg)
 
-` ` `
-./veinmind-escalate scan image [imageID/imageName]
-` ` `
+3. Specify the container name or container ID and scan.
 
-2. Scan all local images
+```
+. / veinmind-escalate scan container [containerID/containerName].
+```
+![](../../../docs/veinmind-escalate/veinmind-escalate_scan_container_01.jpg)
 
-` ` `
-./veinmind-escalate scan image
-` ` `
 
-3. Specify the container name or container ID and scan
+4. Scan all local containers.
 
-` ` `
-./veinmind-escalate scan container [containerID/containerName]
-` ` `
+```
+. / veinmind-escalate scan container.
+```
+![](../../../docs/veinmind-escalate/veinmind-escalate_scan_container_02)
 
-4. Scan all local containers
+5. Specify output format
 
-` ` `
-./veinmind-escalate scan container
-` ` `
+```
+./veinmind-escalate scan container [containerID/containerName] -f html
+#supported format： html,json,cli（default）
+```
+![](../../../docs/veinmind-escalate/veinmind-escalate_format.jpg)
