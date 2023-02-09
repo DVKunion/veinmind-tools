@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"os"
 	"time"
 
@@ -10,10 +9,10 @@ import (
 	"github.com/chaitin/libveinmind/go/plugin"
 	"github.com/chaitin/libveinmind/go/plugin/log"
 	"github.com/chaitin/veinmind-common-go/service/report"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 
 	scanner "github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/analyzer"
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/model"
-	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/utils"
 )
 
 var (
@@ -21,39 +20,6 @@ var (
 	results       = []model.ScanResult{}
 	scanStart     = time.Now()
 	rootCmd       = &cmd.Command{}
-	post          = func(cmd *cmd.Command, args []string) {
-		format, _ := cmd.Flags().GetString("format")
-		verbose, _ := cmd.Flags().GetBool("verbose")
-		onlyAsset, _ := cmd.Flags().GetBool("only-asset")
-		pkgType, _ := cmd.Flags().GetString("type")
-		spend := time.Since(scanStart)
-
-		utils.OutputStream(spend, results, func() error {
-			switch format {
-			case utils.STDOUT:
-				if err := utils.OutputStdout(verbose, onlyAsset, pkgType, results); err != nil {
-					log.Error("Stdout error", err)
-					return err
-				}
-			case utils.JSON:
-				if err := utils.OutputJSON(results); err != nil {
-					log.Error("Export Results JSON False", err)
-					return err
-				}
-			case utils.CSV:
-				if err := utils.OutputCSV(results); err != nil {
-					log.Error("Export Results CSV False", err)
-					return err
-				}
-			}
-			return nil
-		}, onlyAsset)
-	}
-	pre = func(cmd *cmd.Command, args []string) {
-		if _, err := os.Open("./data"); os.IsNotExist(err) {
-			_ = os.Mkdir("./data", 0600)
-		}
-	}
 
 	scanCmd = &cmd.Command{
 		Use:   "scan",
@@ -61,17 +27,13 @@ var (
 	}
 
 	scanImageCmd = &cmd.Command{
-		Use:     "image",
-		Short:   "Scan image asset/vulns",
-		PreRun:  pre,
-		PostRun: post,
+		Use:   "image",
+		Short: "Scan image asset/vulns",
 	}
 
 	scanContainerCmd = &cmd.Command{
-		Use:     "container",
-		Short:   "Scan container asset/vulns",
-		PreRun:  pre,
-		PostRun: post,
+		Use:   "container",
+		Short: "Scan container asset/vulns",
 	}
 )
 
@@ -413,6 +375,9 @@ func scanContainer(c *cmd.Command, container api.Container) error {
 }
 
 func init() {
+	if _, err := os.Open("./data"); os.IsNotExist(err) {
+		_ = os.Mkdir("./data", 0600)
+	}
 	rootCmd.AddCommand(scanCmd)
 	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scanImage), reportService))
 	scanCmd.AddCommand(report.MapReportCmd(cmd.MapContainerCommand(scanContainerCmd, scanContainer), reportService))
@@ -423,7 +388,6 @@ func init() {
 		Description: "veinmind-vuln scanner image os/pkg/app info and vulns",
 	}))
 	scanCmd.PersistentFlags().Int64P("threads", "t", 5, "scan file threads")
-	scanCmd.PersistentFlags().BoolP("verbose", "v", false, "show detail Info")
 	scanCmd.PersistentFlags().String("type", "all", "show specify type detail Info")
 	scanCmd.PersistentFlags().Bool("only-asset", false, "only scan asset info")
 }

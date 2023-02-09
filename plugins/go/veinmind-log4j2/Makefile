@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
 
 SHELL = /bin/bash
-APP = veinmind-sensitive
-CMD = cmd/*
+APP = veinmind-log4j2
+CMD = cmd/cli.go
 ARG = ""
 
 # build params

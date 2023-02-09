@@ -24,7 +24,6 @@ var (
 )
 
 func init() {
-	rule.Init()
 	limit := runtime.NumCPU() * 5
 	if limit > defaultLimit {
 		defaultLimit = limit

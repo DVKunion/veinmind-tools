@@ -28,7 +28,7 @@ veinmind-escalate 是由长亭科技自研的一款逃逸风险扫描工具
 确保机器上安装了`docker`以及`docker-compose`，并启动`ClamAV`。
 
 ```
-chmod +x veinmind-escalate && ./veinmind-escalte extract && cd scripts && docker-compose pull && docker-compose up -d
+chmod +x veinmind-escalate && ./veinmind-escalte extract && cd scripts 
 ```
 
 ### 安装方式二

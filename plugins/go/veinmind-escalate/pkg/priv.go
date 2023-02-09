@@ -3,8 +3,8 @@ package pkg
 import (
 	"bufio"
 	"fmt"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -60,7 +60,8 @@ var CAPStringsList = []string{
 }
 var UnSafeCapList = []string{"CAP_DAC_READ_SEARCH", "CAP_SYS_MODULE", "CAP_SYS_PTRACE", "PRIVILEGED", "CAP_SYS_ADMIN", "CAP_SYS_CHROOT", "CAP_BPF", "CAP_DAC_OVERRIDE"}
 
-func UnsafePrivCheck(fs api.FileSystem) error {
+func UnsafePrivCheck(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	taskMap := make(map[checkMode][]string, 0)
 	taskMap[WRITE] = []string{"/etc/passwd", "/etc/crontab"}
 	taskMap[READ] = []string{"/etc/shadow"}
@@ -68,21 +69,30 @@ func UnsafePrivCheck(fs api.FileSystem) error {
 		reason := WRITEREASON
 		if priv, ok, err := privCheck(fs, task, WRITE); err == nil {
 			if ok == true {
-				AddResult(task, reason, "UnSafePriv "+priv)
+				res = append(res, &event.EscapeDetail{
+					Target: task,
+					Reason: reason,
+					Detail: "UnSafePriv " + priv,
+				})
 			}
 		}
 	}
 	for _, task := range taskMap[READ] {
 		if priv, ok, err := privCheck(fs, task, READ); err == nil {
 			if ok == true {
-				AddResult(task, READREASON, "UnSafePriv "+priv)
+				res = append(res, &event.EscapeDetail{
+					Target: task,
+					Reason: READREASON,
+					Detail: "UnSafePriv " + priv,
+				})
 			}
 		}
 	}
-	return nil
+	return res, nil
 }
 
-func UnsafeSuidCheck(fs api.FileSystem) error {
+func UnsafeSuidCheck(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	var binaryName = []string{"bash", "nmap", "vim", "find", "more", "less", "nano", "cp", "awk"}
 	var filepath = []string{"/bin/", "/usr/bin/"}
 	for i := 0; i < len(filepath); i++ {
@@ -91,57 +101,65 @@ func UnsafeSuidCheck(fs api.FileSystem) error {
 			content, err := fs.Stat(files)
 			if err == nil {
 				if isBelongToRoot(content) && isContainSUID(content) {
-					AddResult(files, SUIDREASON, "UnSafePriv "+content.Mode().String())
+					res = append(res, &event.EscapeDetail{
+						Target: files,
+						Reason: SUIDREASON,
+						Detail: "UnSafePriv " + content.Mode().String(),
+					})
 				}
 			} else {
 				continue
 			}
 		}
 	}
-	return nil
+	return res, nil
 }
 
-func ContainerUnsafeCapCheck(fs api.FileSystem) error {
-	res, err2 := fs.Open("/proc/1/status")
-	if err2 != nil {
-		log.Error(err2)
-		return err2
+func ContainerUnsafeCapCheck(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
+	file, err := fs.Open("/proc/1/status")
+	if err != nil {
+		log.Error(err)
+		return res, err
 	}
-	defer FileClose(res, err2)
-	scanner := bufio.NewScanner(res)
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		compile := regexp.MustCompile(CAPPATTERN)
-		res := compile.FindStringSubmatch(scanner.Text())
-		if len(res) > 0 {
-
-		}
 		if strings.HasPrefix(scanner.Text(), "CapEff:") {
 			if strings.HasSuffix(scanner.Text(), "fffffffff") {
-				AddResult("/proc/1/status", CAPREASON, "UnSafeCapability PRIVILEGED")
+				res = append(res, &event.EscapeDetail{
+					Target: "/proc/1/status",
+					Reason: CAPREASON,
+					Detail: "UnSafeCapability PRIVILEGED",
+				})
 			} else {
 				Cap, err := parseCapEff(scanner.Text())
 				if err != nil {
 					log.Error(err)
-					return err
+					return res, err
 				}
 				UnSafeCaps := intersect(Cap, UnSafeCapList)
 				for _, UnSafeCap := range UnSafeCaps {
-					AddResult("/proc/1/status", CAPREASON, "UnSafeCapability "+UnSafeCap)
+					res = append(res, &event.EscapeDetail{
+						Target: "/proc/1/status",
+						Reason: CAPREASON,
+						Detail: "UnSafeCapability " + UnSafeCap,
+					})
 				}
 			}
 		}
 	}
-	return nil
+	return res, nil
 }
 
-func CheckEmptyPasswdRoot(fs api.FileSystem) error {
+func CheckEmptyPasswdRoot(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	privilegedUser := make([]string, 0)
-	filePasswd, errPASSWD := fs.Open("/etc/passwd")
-	if errPASSWD != nil {
-		log.Error(errPASSWD)
-		return errPASSWD
+	filePasswd, err := fs.Open("/etc/passwd")
+	if err != nil {
+		return res, err
 	}
-	defer FileClose(filePasswd, errPASSWD)
+	defer filePasswd.Close()
 	scanner := bufio.NewScanner(filePasswd)
 	for scanner.Scan() {
 		attr := strings.Split(scanner.Text(), ":")
@@ -152,25 +170,28 @@ func CheckEmptyPasswdRoot(fs api.FileSystem) error {
 		}
 	}
 
-	fileShadow, errSHADOW := fs.Open("/etc/shadow")
-	if errSHADOW != nil {
-		log.Error(errSHADOW)
-		return errSHADOW
+	fileShadow, err := fs.Open("/etc/shadow")
+	if err != nil {
+		return res, err
 	}
-	defer FileClose(fileShadow, errSHADOW)
+	defer fileShadow.Close()
 	scanner = bufio.NewScanner(fileShadow)
 	for scanner.Scan() {
 		attr := strings.Split(scanner.Text(), ":")
 		if attr[1] == "0" {
 			for _, root := range privilegedUser {
 				if root == attr[0] {
-					AddResult("/etc/shadow", EMPTYPASSWDREASON, "UnsafeUser "+attr[0])
+					res = append(res, &event.EscapeDetail{
+						Target: "/etc/shadow",
+						Reason: EMPTYPASSWDREASON,
+						Detail: "UnsafeUser " + attr[0],
+					})
 				}
 			}
 		}
 	}
 
-	return nil
+	return res, nil
 }
 
 func intersect(a []string, b []string) []string {

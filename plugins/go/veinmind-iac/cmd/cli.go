@@ -1,21 +1,27 @@
 package main
 
 import (
-	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"os"
 	"time"
-
-	"github.com/chaitin/libveinmind/go/plugin/log"
-	"github.com/chaitin/veinmind-common-go/service/report"
-	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-iac/pkg/scanner"
-	"github.com/open-policy-agent/opa/ast"
 
 	"github.com/chaitin/libveinmind/go/cmd"
 	iacApi "github.com/chaitin/libveinmind/go/iac"
 	"github.com/chaitin/libveinmind/go/plugin"
+	"github.com/chaitin/libveinmind/go/plugin/log"
+	"github.com/chaitin/veinmind-common-go/service/report"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
+	"github.com/open-policy-agent/opa/ast"
+
+	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-iac/pkg/scanner"
 )
 
 var (
+	pluginInfo = plugin.Manifest{
+		Name:        "veinmind-iac",
+		Author:      "veinmind-team",
+		Description: "veinmind-iac scan IAC file and discovery risks of them",
+	}
+
 	reportService = &report.Service{}
 
 	results   []scanner.Result
@@ -54,23 +60,20 @@ func scanIaC(c *cmd.Command, iac iacApi.IAC) error {
 
 	uniqueAppend(res)
 
-	reportLevel := event.Low
 	for _, data := range res {
 		for _, risk := range data.Risks {
-			if reportLevel < reportLevelMap[data.Rule.Severity] {
-				reportLevel = reportLevelMap[data.Rule.Severity]
-			}
 			reportEvent := event.Event{
-				&event.BasicInfo{
+				BasicInfo: &event.BasicInfo{
 					ID:         iac.Path,
-					Object:     event.Object{Raw: iac},
+					Object:     event.NewObject(iac),
 					Time:       time.Now(),
-					Level:      event.High,
+					Source:     pluginInfo.Name,
+					Level:      reportLevelMap[data.Rule.Severity],
 					DetectType: event.Container,
 					EventType:  event.Risk,
 					AlertType:  event.IaCRisk,
 				},
-				event.NewDetailInfo(&event.IaCDetail{
+				DetailInfo: event.NewDetailInfo(&event.IaCDetail{
 					RuleInfo: event.IaCRule{
 						Id:          data.Rule.Id,
 						Name:        data.Rule.Name,
@@ -101,11 +104,7 @@ func scanIaC(c *cmd.Command, iac iacApi.IAC) error {
 func init() {
 	rootCmd.AddCommand(scanCmd)
 	scanCmd.AddCommand(report.MapReportCmd(cmd.MapIACCommand(scanIaCCmd, scanIaC), reportService))
-	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
-		Name:        "veinmind-iac",
-		Author:      "veinmind-team",
-		Description: "veinmind-iac scan IAC file and discovery risks of them",
-	}))
+	rootCmd.AddCommand(cmd.NewInfoCommand(pluginInfo))
 }
 
 func uniqueAppend(res []scanner.Result) {

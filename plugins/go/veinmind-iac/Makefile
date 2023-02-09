@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
 
 SHELL = /bin/bash
-APP = veinmind-sensitive
-CMD = cmd/*
+APP = veinmind-iac
+CMD = cmd/cli.go
 ARG = ""
 
 # build params
@@ -17,7 +17,7 @@ deps: 	## Install Dependencies.
 
 ##@ Build
 .PHONY: build
-build: deps   ## 	Build Apps.
+build: deps  ## Build Apps.
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP} ${CMD}
 
 .PHONY: build.platform

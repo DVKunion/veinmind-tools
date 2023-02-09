@@ -179,11 +179,10 @@ func scanPreRun(c *cmd.Command, args []string) error {
 	if parallelContainerMode {
 		output = filepath.Join(resourceDirectoryPath, output)
 	}
-	// Service client init
-	reportService = report.NewService(c.Context(), service.WithOutputDir(output), service.WithHtmlRender(), service.WithVerbose())
-	log.GetModule(log.CmdModuleKey).Info(reportService.Report)
 	// discover plugins
 	ctx = c.Context()
+	// Service client init
+	reportService = report.NewService(ctx, service.WithOutputDir(output), service.WithTableRender(), service.WithVerbose())
 	ctx, cancel = context.WithCancel(ctx)
 	ps = []*plugin.Plugin{}
 

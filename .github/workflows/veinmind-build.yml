@@ -18,13 +18,22 @@ jobs:
           cd ./plugins/go/veinmind-weakpass && go mod tidy 
           cd hash && go test -tags dynamic
           cd ../service && go test -tags dynamic
-#  build-amd64-veinmind-basic:
-#    uses: ./.github/workflows/build.yml
-#    with:
-#      path: ./plugins/go/veinmind-malicious
-#      file: veinmind-basic
-#      CI_GOOS: linux
-#      CI_GOARCH: amd64
+
+  build-amd64-veinmind-basic:
+    uses: ./.github/workflows/build.yml
+    with:
+      path: ./plugins/go/veinmind-basic
+      file: veinmind-basic
+      CI_GOOS: linux
+      CI_GOARCH: amd64
+
+  build-amd64-veinmind-escalate:
+    uses: ./.github/workflows/build.yml
+    with:
+      path: ./plugins/go/veinmind-escalate
+      file: veinmind-escalate
+      CI_GOOS: linux
+      CI_GOARCH: amd64
 
   build-amd64-veinmind-malicious:
     uses: ./.github/workflows/build.yml
@@ -110,11 +119,11 @@ jobs:
       CI_GOOS: linux
       CI_GOARCH: amd64
 
-  build-amd64-veinmind-sensitive-go:
+  build-amd64-veinmind-sensitive:
     uses: ./.github/workflows/build.yml
     with:
       path: ./plugins/go/veinmind-sensitive
-      file: veinmind-sensitive-go
+      file: veinmind-sensitive
       CI_GOOS: linux
       CI_GOARCH: amd64
 
@@ -125,6 +134,8 @@ jobs:
       CI_GOOS: linux
       CI_GOARCH: amd64
     needs: [
+      build-amd64-veinmind-basic,
+      build-amd64-veinmind-escalate,
       build-amd64-veinmind-malicious,
       build-amd64-veinmind-vuln,
       build-amd64-veinmind-webshell,
@@ -132,6 +143,7 @@ jobs:
       build-amd64-veinmind-log4j2,
       build-amd64-static-veinmind-weakpass,
       build-amd64-veinmind-iac,
+      build-amd64-veinmind-sensitive,
     ]
     steps:
       - uses: actions/checkout@v3
@@ -167,17 +179,18 @@ jobs:
           mv veinmind-webshell_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-webshell 
           mv veinmind-unsafe-mount_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-unsafe-mount 
           mv veinmind-log4j2_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-log4j2 
+          mv veinmind-sensitive_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-sensitive  
           mv veinmind-weakpass_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-weakpass 
           mv veinmind-iac_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-iac 
-          mv ./plugins/python/veinmind-sensitive ./veinmind-sensitive 
+          mv veinmind-basic_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-iac 
+          mv veinmind-escalate_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-escalate  
           mv ./plugins/python/veinmind-history ./veinmind-history
           mv ./plugins/python/veinmind-backdoor ./veinmind-backdoor
-          mv ./veinmind-runner/artifacts/${{env.CI_GOOS}}-${{env.CI_GOARCH}}/veinmind-runner_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-runner-entrypoint
+          mv ./veinmind-runner/veinmind-runner_${{env.CI_GOOS}}_${{env.CI_GOARCH}} veinmind-runner-entrypoint
           rm -rf ./veinmind-runner && mv veinmind-runner-entrypoint veinmind-runner
           chmod +x veinmind-runner veinmind-malicious veinmind-vuln veinmind-webshell veinmind-unsafe-mount veinmind-log4j2 veinmind-weakpass veinmind-iac 
           tar cvzf veinmind-runner.tar.gz veinmind-runner veinmind-malicious veinmind-vuln veinmind-webshell \
           veinmind-unsafe-mount veinmind-log4j2 veinmind-weakpass veinmind-iac \
-          ./veinmind-sensitive \
           ./veinmind-history \
           ./veinmind-backdoor \
       - uses: actions/upload-artifact@v3

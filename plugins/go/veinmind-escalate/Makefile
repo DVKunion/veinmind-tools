@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
 
 SHELL = /bin/bash
-APP = veinmind-sensitive
-CMD = cmd/*
+APP = veinmind-escalate
+CMD = cmd/cli.go
 ARG = ""
 
 # build params
@@ -17,7 +17,7 @@ deps: 	## Install Dependencies.
 
 ##@ Build
 .PHONY: build
-build: deps   ## 	Build Apps.
+build: deps  ## Build Apps.
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP} ${CMD}
 
 .PHONY: build.platform
@@ -29,13 +29,14 @@ build.platform: deps
 build.docker: ## Build Apps Docker Images.
 	docker build -t ${APP}:${IMAGE_TAG} .
 
+
 ##@ Run
 .PHONY: run
-run: deps ## Run Apps. 			e.g. : `make run ARG="scan image"` .
+run: deps ## Run Apps. 			e.g. : `make run ARG="scan iac xxxx"` .
 	go run ${CMD} ${ARG}
 
 .PHONY: run.docker
-run.docker:	## Run With Parallel Container Mode. e.g. : `make run.docker ARG="scan image"` .
+run.docker:	## Run With Parallel Container Mode. e.g. : `make run.docker ARG="scan iac xxxx"` .
 	docker run --rm -it --mount 'type=bind,source=/,target=/host,readonly,bind-propagation=rslave' -v `pwd`:/tool/data veinmind/${APP} ${ARG}
 
 .PHONY: help

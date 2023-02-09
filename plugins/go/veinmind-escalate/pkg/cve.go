@@ -2,12 +2,15 @@ package pkg
 
 import (
 	"bufio"
-	"github.com/pelletier/go-toml"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
+	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-escalate/rules"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pelletier/go-toml"
 
 	api "github.com/chaitin/libveinmind/go"
 	"github.com/chaitin/libveinmind/go/plugin/log"
@@ -16,8 +19,6 @@ import (
 var cveList = make([]CVE, 0)
 
 var taskList = make([]tasks, 0)
-
-type Cfunc func(interface{}) error
 
 type versionCheck struct {
 	BeginVersion         string
@@ -28,7 +29,6 @@ type versionCheck struct {
 type CVE struct {
 	CVENumber        string
 	versionchecklist []versionCheck
-	Customized       Cfunc
 }
 
 type tasks struct {
@@ -46,30 +46,22 @@ func getCVEobject(name string) *CVE {
 	return &CVE{}
 }
 
-func (cve *CVE) setFunc(checkFunc Cfunc) {
-	cve.Customized = checkFunc
-}
-
-func (task *tasks) check() error {
-	if task.CVEinfo.Customized != nil {
-		task.CVEinfo.Customized(task.para)
-		return nil
-	}
+func (task *tasks) check() (*event.EscapeDetail, error) {
 	versions := task.para.([]string)
 	KernelVersion, err := strconv.Atoi(versions[1])
 	if err != nil {
 		log.Error(err)
-		return err
+		return nil, err
 	}
 	MajorRevision, err := strconv.Atoi(versions[2])
 	if err != nil {
 		log.Error(err)
-		return err
+		return nil, err
 	}
 	MinorRevision, err := strconv.Atoi(versions[3])
 	if err != nil {
 		log.Error(err)
-		return err
+		return nil, err
 	}
 	var versionString string
 	for _, value := range versions {
@@ -110,15 +102,23 @@ func (task *tasks) check() error {
 		}
 		if morethan(cveBeginVersionsInt, []int{KernelVersion, MajorRevision, MinorRevision}, ver.BeginEqual) &&
 			lessthan(cveEndVersionsInt, []int{KernelVersion, MajorRevision, MinorRevision}, ver.EndEqual) {
-			AddResult("KERNEL VERSION", CVEREASON+task.CVEinfo.CVENumber, "UnSafeKernelVersion "+versionString)
-			return nil
+			return &event.EscapeDetail{
+				Target: "KERNEL VERSION",
+				Reason: CVEREASON + task.CVEinfo.CVENumber,
+				Detail: "UnSafeKernelVersion " + versionString,
+			}, nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
-func getCVEFromFile(path string) error {
-	config, err := toml.LoadFile(path)
+func getCVEFromFile() error {
+	f, err := rules.Open("rule.toml")
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	config, err := toml.LoadReader(f)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -240,7 +240,7 @@ func getVersion() ([]string, error) {
 		log.Error(err)
 		return nil, err
 	}
-	defer FileClose(content, err)
+	defer content.Close()
 	scanner := bufio.NewScanner(content)
 	for scanner.Scan() {
 		complie := regexp.MustCompile(KERNELPATTERN)
@@ -297,15 +297,19 @@ func lessthan(cveVersion []int, inputVersion []int, equal bool) bool {
 }
 
 // 此处传入fs api.FileSystem只是为了和其他检测函数统一格式，实际并无作用
-func ContainerCVECheck(fs api.FileSystem) error {
+func ContainerCVECheck(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	for _, task := range taskList {
-		task.check()
+		check, err := task.check()
+		if err == nil && check != nil {
+			res = append(res, check)
+		}
 	}
-	return nil
+	return res, nil
 }
 
 func init() {
-	getCVEFromFile("rule.toml")
+	getCVEFromFile()
 	for _, value := range cveList {
 		para, err := getVersion()
 		if err != nil {

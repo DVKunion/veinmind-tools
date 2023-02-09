@@ -1,12 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"github.com/chaitin/veinmind-common-go/service/report/event"
 	_ "net/http/pprof"
 	"os"
-	"path"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -15,7 +11,8 @@ import (
 	"github.com/chaitin/libveinmind/go/cmd"
 	"github.com/chaitin/libveinmind/go/plugin"
 	"github.com/chaitin/libveinmind/go/plugin/log"
-	reportService "github.com/chaitin/veinmind-common-go/service/report"
+	"github.com/chaitin/veinmind-common-go/service/report"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 
 	_ "github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/config"
 	_ "github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/database"
@@ -23,50 +20,27 @@ import (
 	_ "github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/database/model"
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/embed"
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/scanner/malicious"
-	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-malicious/sdk/common/report"
 )
 
-var reportData = model.ReportData{}
-var reportLock sync.Mutex
-var scanStart = time.Now()
-var ReportService = &reportService.Service{}
-var rootCmd = &cmd.Command{}
-var scanCmd = &cmd.Command{Use: "scan"}
-var extractCmd = &cmd.Command{
-	Use:   "extract",
-	Short: "Extract config file",
-	RunE: func(cmd *cmd.Command, args []string) error {
-		embed.ExtractAll()
-		return nil
-	},
-}
-var scanImageCmd = &cmd.Command{
-	Use:   "image",
-	Short: "Scan image malicious files",
-	PostRun: func(cmd *cmd.Command, args []string) {
-		// 计算扫描数据
-		spend := time.Since(scanStart)
-		reportData.ScanSpendTime = spend.String()
-		reportData.ScanStartTime = scanStart.Format("2006-01-02 15:04:05")
-		report.CalculateScanReportCount(&reportData)
-		report.SortScanReport(&reportData)
-
-		format, _ := cmd.Flags().GetString("format")
-		name, _ := cmd.Flags().GetString("name")
-		outputPath, _ := cmd.Flags().GetString("output")
-		name = strings.Join([]string{name, format}, ".")
-		fpath := path.Join(outputPath, name)
-
-		switch format {
-		case report.HTML:
-			report.OutputHTML(reportData, fpath)
-		case report.JSON:
-			report.OutputJSON(reportData, fpath)
-		case report.CSV:
-			report.OutputCSV(reportData, fpath)
-		}
-	},
-}
+var (
+	reportData    = model.ReportData{}
+	reportLock    sync.Mutex
+	ReportService = &report.Service{}
+	rootCmd       = &cmd.Command{}
+	scanCmd       = &cmd.Command{Use: "scan"}
+	extractCmd    = &cmd.Command{
+		Use:   "extract",
+		Short: "Extract config file",
+		RunE: func(cmd *cmd.Command, args []string) error {
+			embed.ExtractAll()
+			return nil
+		},
+	}
+	scanImageCmd = &cmd.Command{
+		Use:   "image",
+		Short: "Scan image malicious files",
+	}
+)
 
 func scan(_ *cmd.Command, image api.Image) error {
 
@@ -75,7 +49,6 @@ func scan(_ *cmd.Command, image api.Image) error {
 		log.Error(err)
 		return nil
 	}
-	fmt.Println(result.MaliciousFileCount)
 	reportLock.Lock()
 	reportData.ScanImageResult = append(reportData.ScanImageResult, result)
 	reportLock.Unlock()
@@ -138,15 +111,13 @@ func scan(_ *cmd.Command, image api.Image) error {
 
 func init() {
 	rootCmd.AddCommand(scanCmd)
-	scanCmd.AddCommand(reportService.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scan), ReportService))
+	scanCmd.AddCommand(report.MapReportCmd(cmd.MapImageCommand(scanImageCmd, scan), ReportService))
 	rootCmd.AddCommand(extractCmd)
 	rootCmd.AddCommand(cmd.NewInfoCommand(plugin.Manifest{
 		Name:        "veinmind-malicious",
 		Author:      "veinmind-team",
 		Description: "veinmind-malicious scanner image malicious file",
 	}))
-	scanCmd.Flags().StringP("name", "n", "report", "report name for scan report")
-	scanCmd.Flags().StringP("output", "o", ".", "output path for report")
 }
 
 func main() {

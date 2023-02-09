@@ -32,12 +32,13 @@ jobs:
       TAGS: ${{inputs.TAGS}}
     steps:
       - uses: actions/checkout@v3
-      - run: cd ${{inputs.path}} && /bin/bash -x script/build_${{inputs.CI_GOARCH}}.sh
+      - run: make platform.${{ inputs.file }} CI_GOOS=${{inputs.CI_GOOS}} CI_GOARCH=${{inputs.CI_GOARCH}} TAGS=${{inputs.TAGS}}
       - uses: actions/upload-artifact@v3
         with:
           name: ${{inputs.file}}-${{inputs.CI_GOARCH}}
-          path: ${{inputs.path}}/artifacts/${{inputs.CI_GOOS}}-${{inputs.CI_GOARCH}}/${{inputs.file}}_${{inputs.CI_GOOS}}_${{inputs.CI_GOARCH}}
+          path: ${{inputs.path}}/${{inputs.file}}_${{inputs.CI_GOOS}}_${{inputs.CI_GOARCH}}
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ${{inputs.path}}/artifacts/${{inputs.CI_GOOS}}-${{inputs.CI_GOARCH}}/${{inputs.file}}_${{inputs.CI_GOOS}}_${{inputs.CI_GOARCH}}
+          name: ${{inputs.file}}-${{inputs.CI_GOARCH}}
+          files: ${{inputs.path}}/${{inputs.file}}_${{inputs.CI_GOOS}}_${{inputs.CI_GOARCH}}

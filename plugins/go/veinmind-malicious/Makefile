@@ -1,39 +1,36 @@
 .DEFAULT_GOAL := help
 
 SHELL = /bin/bash
-APP = veinmind-weakpass
-CMD = cmd/*
+APP = veinmind-malicious
+CMD = cmd/scan/*
 ARG = ""
 
 # build params
 IMAGE_TAG = "latest"
 CI_GOOS = "linux"
 CI_GOARCH = "amd64"
-TAGS = dynamic
+TAGS = community
 
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
+	apt-get install -y clamav clamav-daemon && freshclam
 	go env -w GOPROXY=https://goproxy.io,direct && go mod tidy
 
 ##@ Build
 .PHONY: build
-build: deps   ## Build Apps.
-	go build -ldflags '-s -w' -v -trimpath  -a -tags ${TAGS} -o ${APP} ${CMD}
+build: deps   ## 	Build Apps.
+	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*'; \
+	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS}  -o ${APP} ${CMD}
 
 .PHONY: build.platform
 build.platform: deps
-	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" TAGS=${TAGS};\
-	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS} -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
-
-.PHONY: build.static
-build.static: deps   ## Build Apps Static.
 	sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 	sudo apt-get install libssl-dev
 	export CC="aarch64-linux-gnu-gcc" CXX="aarch64-linux-gnu-g++"; \
 	export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig ; \
-	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" TAGS=${TAGS};\
-	go build -ldflags '-s -w' -trimpath -tags ${TAGS} -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
+	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*' ; GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
+	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS} -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.
@@ -41,12 +38,26 @@ build.docker: ## Build Apps Docker Images.
 
 ##@ Run
 .PHONY: run
-run: deps ## Run Apps. 			e.g. : `make run ARG="scan image"` .
+run: deps run.clamav ## Run Apps. 			e.g. : `make run ARG="scan image"` .
+	go run ${CMD} ${ARG}
+
+.PHONY: run.clamav
+run.clamav: deps ## Run Apps. 			e.g. : `make run ARG="scan image"` .
+	cp dockerfiles/clamd.conf /etc/clamav/clamd.conf
+	clamd
 	go run ${CMD} ${ARG}
 
 .PHONY: run.docker
 run.docker:	## Run With Parallel Container Mode. e.g. : `make run.docker ARG="scan image"` .
+	source .evn
+	docker run --rm -it -d -p 3310:3310 clamav/clamav:latest
 	docker run --rm -it --mount 'type=bind,source=/,target=/host,readonly,bind-propagation=rslave' -v `pwd`:/tool/data veinmind/${APP} ${ARG}
+
+##@ Clean
+.PHONY: clean
+clean:  ## Remove Scanner Data DB && Stop Clamd
+	rm -rf data/data.db
+	kill -9 `lsof -i tcp:3310 | grep 3310 | awk '{print $2}'`
 
 .PHONY: help
 help:

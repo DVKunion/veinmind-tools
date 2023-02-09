@@ -2,23 +2,21 @@ package pkg
 
 import (
 	"bufio"
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"regexp"
 	"strings"
 
 	api "github.com/chaitin/libveinmind/go"
 )
 
-func SudoFileCheck(fs api.FileSystem) error {
+func SudoFileCheck(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	UnsafeSudoFiles := []string{"wget", "find", "cat", "apt", "zip", "xxd", "time", "taskset", "git", "sed", "pip", "ed", "tmux", "scp", "perl", "bash", "less", "awk", "man", "vi", "vim", "env", "ftp", "all"}
-	content, err2 := fs.Open("/etc/sudoers")
-	if err2 != nil {
-		return err2
+	content, err := fs.Open("/etc/sudoers")
+	if err != nil {
+		return res, err
 	}
-	defer func(err2 error) {
-		if err2 == nil {
-			content.Close()
-		}
-	}(err2)
+	defer content.Close()
 	scanner := bufio.NewScanner(content)
 
 	for scanner.Scan() {
@@ -26,22 +24,26 @@ func SudoFileCheck(fs api.FileSystem) error {
 			continue
 		}
 		compile := regexp.MustCompile(SUDOREGEX)
-		res := compile.FindStringSubmatch(scanner.Text())
+		matches := compile.FindStringSubmatch(scanner.Text())
 		//fmt.Println(res)
-		if len(res) == 3 {
-			if res[1] == "admin" || res[1] == "sudo" || res[1] == "root" { //sudo默认设置
+		if len(matches) == 3 {
+			if matches[1] == "admin" || matches[1] == "sudo" || matches[1] == "root" { //sudo默认设置
 				continue
 			} else { //其他用户
-				sudoFile := res[2]
+				sudoFile := matches[2]
 				for _, UnsafeSudoFile := range UnsafeSudoFiles {
 					if strings.Contains(UnsafeSudoFile, strings.ToLower(strings.TrimSpace(sudoFile))) {
-						AddResult(scanner.Text(), SUDOREASON, "UnSafeUser "+res[1])
+						res = append(res, &event.EscapeDetail{
+							Target: scanner.Text(),
+							Reason: SUDOREASON,
+							Detail: "UnSafeUser " + matches[1],
+						})
 					}
 				}
 			}
 		}
 	}
-	return nil
+	return res, nil
 
 }
 

@@ -2,20 +2,21 @@ package analyzer
 
 import (
 	"context"
-	dio "github.com/aquasecurity/go-dep-parser/pkg/io"
-	"github.com/aquasecurity/trivy/pkg/fanal/analyzer"
-	_ "github.com/aquasecurity/trivy/pkg/fanal/analyzer/all"
-	"github.com/aquasecurity/trivy/pkg/fanal/artifact"
-	"github.com/aquasecurity/trivy/pkg/fanal/types"
-	"golang.org/x/sync/semaphore"
 	"io/fs"
 	"os"
 	"strings"
 	"sync"
 
+	dio "github.com/aquasecurity/go-dep-parser/pkg/io"
+	"github.com/aquasecurity/trivy/pkg/fanal/analyzer"
+	_ "github.com/aquasecurity/trivy/pkg/fanal/analyzer/all"
+	"github.com/aquasecurity/trivy/pkg/fanal/artifact"
+	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	api "github.com/chaitin/libveinmind/go"
 	"github.com/chaitin/libveinmind/go/plugin/log"
 	"github.com/chaitin/veinmind-common-go/service/report/event"
+	"golang.org/x/sync/semaphore"
+
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/model"
 	"github.com/chaitin/veinmind-tools/plugins/go/veinmind-vuln/sdk/osv"
 )

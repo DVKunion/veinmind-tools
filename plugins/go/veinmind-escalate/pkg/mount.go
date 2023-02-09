@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"github.com/chaitin/veinmind-common-go/service/report/event"
 	"path/filepath"
 
 	api "github.com/chaitin/libveinmind/go"
@@ -29,38 +30,34 @@ var UnsafeMountPaths = []string{
 	"/var/log",
 }
 
-func ContainerUnsafeMount(fs api.FileSystem) error {
+func ContainerUnsafeMount(fs api.FileSystem) ([]*event.EscapeDetail, error) {
+	var res = make([]*event.EscapeDetail, 0)
 	container := fs.(api.Container)
 	spec, err := container.OCISpec()
 	if err != nil {
-		return err
+		return res, err
 	}
 
 	for _, mount := range spec.Mounts {
 		for _, pattern := range UnsafeMountPaths {
-			var matched bool
-			if pattern == "/var/log" {
-				content, errTOKEN := fs.Open("/var/run/secrets/kubernetes.io/serviceaccount/token") //检查是否在k8s pod环境下
-				if errTOKEN == nil {
-					matched, err = filepath.Match(pattern, mount.Source)
-					if err != nil {
+			matched, _ := filepath.Match(pattern, mount.Source)
+			if matched {
+				// /var/log逃逸仅在k8s环境下
+				if pattern == "/var/log" {
+					// 不存在/var/run/secrets/kubernetes.io/serviceaccount/token, 则非k8s容器，跳过。
+					if _, err := fs.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); err != nil {
 						continue
 					}
 				}
-				defer FileClose(content, errTOKEN)
-			} else {
-				matched, err = filepath.Match(pattern, mount.Source)
-				if err != nil {
-					continue
-				}
-			}
-
-			if matched {
-				AddResult(mount.Source, MOUNTREASON, "UnSafeMountDestination "+mount.Destination)
+				res = append(res, &event.EscapeDetail{
+					Target: mount.Source,
+					Reason: MOUNTREASON,
+					Detail: "UnSafeMountDestination " + mount.Destination,
+				})
 			}
 		}
 	}
-	return nil
+	return res, nil
 }
 
 func init() {

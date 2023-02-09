@@ -150,6 +150,7 @@ func GenerateImageReport(weakpassResults []model.WeakpassResult, image api.Image
 			BasicInfo: &event.BasicInfo{
 				ID:         image.ID(),
 				Object:     event.NewObject(image),
+				Source:     "veinmind-weakpass",
 				Time:       time.Now(),
 				Level:      event.High,
 				DetectType: event.Image,
@@ -183,6 +184,7 @@ func GenerateContainerReport(weakpassResults []model.WeakpassResult, container a
 			BasicInfo: &event.BasicInfo{
 				ID:         container.ID(),
 				Object:     event.NewObject(container),
+				Source:     "veinmind-weakpass",
 				Time:       time.Now(),
 				Level:      event.High,
 				DetectType: event.Container,
