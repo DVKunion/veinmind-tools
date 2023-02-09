@@ -46,8 +46,8 @@ endef
 .PHONY: install
 install: ## 			install libVeinMind
 	@echo 'deb [trusted=yes] https://download.veinmind.tech/libveinmind/apt/ ./' | sudo tee /etc/apt/sources.list.d/libveinmind.list; \
-    sudo apt-get update;\
-    sudo apt-get install -y libveinmind-dev
+    apt-get update;\
+    apt-get install -y libveinmind-dev
 
 .PHONY: plugin
 plugin: ## 			init a new Plugins
@@ -108,6 +108,9 @@ all: ## 			build all plugins
 
 veinmind-%: ##			build go plugins. e.g. `make veinmind-basic`
 	$(MAKE) -C plugins/go/$@ build
+
+platform.veinmind-runner:
+	$(MAKE) -C veinmind-runner build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}
 
 platform.veinmind-%: ##   build go plugins with platform. e.g. `make veinmind-basic CI_GOOS=linux CI_GOARCH=amd64 TAGS=xxxx`
 	$(MAKE) -C plugins/go/$(subst platform.,,$@) build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}

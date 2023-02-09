@@ -6,14 +6,14 @@ CMD = cmd/cli.go
 ARG = ""
 
 # build params
-IMAGE_TAG = "latest"
-CI_GOOS = "linux"
-CI_GOARCH = "amd64"
+IMAGE_TAG = latest
+CI_GOOS = linux
+CI_GOARCH = amd64
 
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
-	go env -w GOPROXY=https://goproxy.io,direct && go mod tidy
+	go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
 
 ##@ Build
 .PHONY: build
@@ -21,7 +21,7 @@ build: deps   ## 	Build Apps.
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP} ${CMD}
 
 .PHONY: build.platform
-build.platform: deps
+build.platform: deps ## Build Apps With Platform.
 	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 

@@ -6,29 +6,37 @@ CMD = cmd/scan/*
 ARG = ""
 
 # build params
-IMAGE_TAG = "latest"
-CI_GOOS = "linux"
-CI_GOARCH = "amd64"
+IMAGE_TAG = latest
+CI_GOOS = linux
+CI_GOARCH = amd64
 TAGS = community
 
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
-	apt-get install -y clamav clamav-daemon && freshclam
-	go env -w GOPROXY=https://goproxy.io,direct && go mod tidy
+	go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
+
+clamav: ## Install Clamav.
+	apt-get update && apt-get install -y clamav clamav-daemon && freshclam
+
+arm: ## Install arm static build .
+	apt-get update && apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libssl-dev
 
 ##@ Build
 .PHONY: build
-build: deps   ## 	Build Apps.
+build: clamav deps   ## 	Build Apps.
 	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*'; \
 	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS}  -o ${APP} ${CMD}
 
 .PHONY: build.platform
-build.platform: deps
-	sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-	sudo apt-get install libssl-dev
+build.platform: deps ## Build Apps With Platform.
+	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*' ; GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
+	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS} -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
+
+.PHONY: build.arm
+build.arm: deps arm
 	export CC="aarch64-linux-gnu-gcc" CXX="aarch64-linux-gnu-g++"; \
-	export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig ; \
+	export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig; \
 	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*' ; GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
 	go build -ldflags '-s -w' -v -trimpath -a -tags ${TAGS} -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 

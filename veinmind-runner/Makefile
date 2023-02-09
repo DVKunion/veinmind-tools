@@ -1,19 +1,19 @@
 .DEFAULT_GOAL := help
 
 SHELL = /bin/bash
-APP = veinmind-runner
-CMD = cmd/*
+APP=veinmind-runner
+CMD=./cmd/
 ARG = ""
 
 # build params
-IMAGE_TAG = "latest"
-CI_GOOS = "linux"
-CI_GOARCH = "amd64"
+IMAGE_TAG = latest
+CI_GOOS=linux
+CI_GOARCH=amd64
 
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
-	go env -w GOPROXY=https://goproxy.io,direct && go mod tidy
+	go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
 
 ##@ Build
 .PHONY: build
@@ -22,7 +22,7 @@ build: deps   ## Build Apps.
 
 .PHONY: build.platform
 build.platform: deps
-	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
+	export GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
 .PHONY: build.docker
