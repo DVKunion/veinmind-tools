@@ -12,7 +12,7 @@ FROM veinmind/base:1.5.3-stretch
 # install clamav
 COPY dockerfiles/sources.list /etc/apt/sources.list
 RUN apt update && apt-get install -y clamav clamav-daemon && freshclam
-RUN dockerfiles/clamd.conf /etc/clamav/clamd.conf
+COPY dockerfiles/clamd.conf /etc/clamav/clamd.conf
 
 # copy veinmind-malicious from context
 ARG CI_GOOS
