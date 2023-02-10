@@ -76,6 +76,7 @@ jobs:
           push: true
           platforms: |
             linux/amd64
+#            linux/arm64
           tags: |
             dvkunion/${{ matrix.plugin }}:latest
             dvkunion/${{ matrix.plugin }}:${{github.ref_name}}
@@ -103,7 +104,7 @@ jobs:
           push: true
           platforms: |
             linux/amd64
-            linux/arm64
+#            linux/arm64
           tags: |
             dvkunion/veinmind-runner:latest
             dvkunion/veinmind-runner:${{github.ref_name}}
