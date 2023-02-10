@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chaitin/libveinmind/go/cmd"
 	"github.com/chaitin/libveinmind/go/plugin"
@@ -179,10 +180,32 @@ func scanPreRun(c *cmd.Command, args []string) error {
 	if parallelContainerMode {
 		output = filepath.Join(resourceDirectoryPath, output)
 	}
+
+	opts := make([]service.Option, 0)
+
+	opts = append(opts, service.WithOutputDir(output))
+
+	format, _ := c.Flags().GetString("format")
+	formatList := strings.Split(format, ",")
+	for _, f := range formatList {
+		switch f {
+		case "cli":
+			opts = append(opts, service.WithTableRender())
+		case "json":
+			opts = append(opts, service.WithJsonRender())
+		case "html":
+			opts = append(opts, service.WithHtmlRender())
+		}
+	}
+
+	verbose, _ := c.Flags().GetBool("verbose")
+	if verbose {
+		opts = append(opts, service.WithVerbose())
+	}
 	// discover plugins
 	ctx = c.Context()
 	// Service client init
-	reportService = report.NewService(ctx, service.WithOutputDir(output), service.WithTableRender(), service.WithVerbose())
+	reportService = report.NewService(ctx, opts...)
 	ctx, cancel = context.WithCancel(ctx)
 	ps = []*plugin.Plugin{}
 
@@ -242,6 +265,9 @@ func init() {
 	scanCmd.AddCommand(MapTaskCommand(scanImageCmd, scan.DispatchImages))
 	scanCmd.AddCommand(MapTaskCommand(scanContainerCmd, scan.DispatchContainers))
 	scanCmd.AddCommand(MapTaskCommand(scanIaCCmd, scan.DispatchIacs))
+
+	scanCmd.PersistentFlags().StringP("format", "", "cli", "output format: html/json/cli")
+	scanCmd.PersistentFlags().BoolP("verbose", "v", false, "output verbose detail")
 	scanCmd.PersistentFlags().BoolP("insecure-skip", "", false, "skip tls config")
 	// Scan Flags
 	scanImageCmd.Flags().StringP("config", "c", "", "auth config path")

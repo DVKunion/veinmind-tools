@@ -5,8 +5,8 @@ RUN make build
 
 FROM alpine:3.9 as  upx
 WORKDIR /build
-COPY --from=builder /build/veinmind-malicious_ .
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && apk add upx && upx -9 veinmind-malicious_
+COPY --from=builder /build/veinmind-malicious .
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && apk add upx && upx -9 veinmind-malicious
 
 FROM veinmind/base:1.5.3-stretch
 # install clamav
