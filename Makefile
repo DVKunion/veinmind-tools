@@ -35,11 +35,9 @@ define init_plugin
 	echo -e "enter plugins name: $(NAME) "; \
 	echo -e "enter is publish(PUB: DEFAULT no): $(PUB)"; \
 	mkdir $(1); \
-	echo -e "$(BLUE)init Veinmind GO Plugin $(NAME) at: plugins/$(LANG)/$(NAME)";\
-	cp ./example/parallel-container-run.sh ./example/README.md ./example/README.en.md $(1);\
+	echo -e "$(BLUE)init Veinmind GO Plugin $(NAME) at: plugins/$(LANG)/veinmind-$(NAME)";\
 	echo -e "# veinmind-$(NAME)  \n\n这是描述文件" >$(1)/README.md;\
 	echo -e "# veinmind-$(NAME)  \n\nthis is description file" > $(1)/README.en.md;
-	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", $(1)/parallel-container-run.sh);
 endef
 
 ##@ Init
@@ -55,8 +53,7 @@ ifeq ($(LANG), go)
 	$(call init_plugin, plugins/go/veinmind-$(NAME))
 	@cp -r ./example/go/* plugins/go/veinmind-$(NAME)
 	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/Dockerfile)
-	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/script/build_amd64.sh)
-	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/script/build.sh)
+	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/Makefile)
 	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/go.mod)
 	$(call sed, "s/veinmind-example/veinmind-$(NAME)/g", plugins/go/veinmind-$(NAME)/cmd/cli.go)
 else ifeq ($(LANG), python)
