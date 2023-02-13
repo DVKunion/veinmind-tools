@@ -38,24 +38,22 @@ jobs:
             veinmind/${{ matrix.plugin }}:latest
             veinmind/${{ matrix.plugin }}:${{github.ref_name}}
           context: ${{ matrix.path }}/${{ matrix.plugin }}
-          build-args: |
-            CI_GOOS=${{env.CI_GOOS}}
-            CI_GOARCH=${{env.CI_GOARCH}}
+
   # push go plugins
   push-go-plugins:
     strategy:
       matrix:
         plugin: [
           veinmind-basic,
-          veinmind-escalate,
-          veinmind-iac,
+#          veinmind-escalate,
+#          veinmind-iac,
           veinmind-log4j2,
-          veinmind-malicious,
-          veinmind-sensitive,
-          veinmind-unsafe-mount,
-          veinmind-vuln,
-          veinmind-weakpass,
-          veinmind-webshell,
+#          veinmind-malicious,
+#          veinmind-sensitive,
+#          veinmind-unsafe-mount,
+#          veinmind-vuln,
+#          veinmind-weakpass,
+#          veinmind-webshell,
         ]
         path: [ ./plugins/go/ ]
     name: ${{ matrix.plugin }}
@@ -76,14 +74,11 @@ jobs:
           push: true
           platforms: |
             linux/amd64
-#            linux/arm64
+            linux/arm64
           tags: |
-            veinmind/${{ matrix.plugin }}:latest
-            veinmind/${{ matrix.plugin }}:${{github.ref_name}}
+            dvkunion/${{ matrix.plugin }}:latest
+            dvkunion/${{ matrix.plugin }}:${{github.ref_name}}
           context: ${{ matrix.path }}/${{ matrix.plugin }}
-          build-args: |
-            CI_GOOS=${{env.CI_GOOS}}
-            CI_GOARCH=${{env.CI_GOARCH}}
 
   push-veinmind-runner:
     name: veinmind-runner
@@ -105,11 +100,8 @@ jobs:
           push: true
           platforms: |
             linux/amd64
-#            linux/arm64
+            linux/arm64
           tags: |
             veinmind/veinmind-runner:latest
             veinmind/veinmind-runner:${{github.ref_name}}
           context: veinmind-runner
-          build-args: |
-            CI_GOOS=${{env.CI_GOOS}}
-            CI_GOARCH=${{env.CI_GOARCH}}
