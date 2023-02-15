@@ -27,7 +27,7 @@ jobs:
         with:
           name: ${{ matrix.plugin }}
           path: ${{ matrix.path }}/${{ matrix.plugin }}/${{ matrix.plugin }}.tar.gz
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@master
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: ${{ matrix.path }}/${{ matrix.plugin }}/${{ matrix.plugin }}.tar.gz
@@ -109,7 +109,7 @@ jobs:
         with:
           name: veinmind-runner.tar.gz
           path: veinmind-runner.tar.gz
-      - uses: softprops/action-gh-release@v1
+      - uses: softprops/action-gh-release@master
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: veinmind-runner.tar.gz
