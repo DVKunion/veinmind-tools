@@ -4,6 +4,7 @@ SHELL = /bin/bash
 APP = veinmind-webshell
 CMD = cmd/webshell/cmd.go
 ARG = ""
+OUTPUT_PATH = ./
 
 # build params
 IMAGE_TAG = latest
@@ -18,12 +19,12 @@ deps: 	## Install Dependencies.
 ##@ Build
 .PHONY: build
 build: deps   ## Build Apps.
-	go build -ldflags '-s -w' -v -trimpath -a -o ${APP} ${CMD}
+	go build -ldflags '-s -w' -v -trimpath -a -o ${OUTPUT_PATH}/${APP} ${CMD}
 
 .PHONY: build.platform
 build.platform: deps ## Build Apps With Platform.
 	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
-	go build -ldflags '-s -w' -v -trimpath -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
+	go build -ldflags '-s -w' -v -trimpath -a -o ${OUTPUT_PATH}/${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.

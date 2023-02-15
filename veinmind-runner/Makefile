@@ -4,6 +4,7 @@ SHELL = /bin/bash
 APP=veinmind-runner
 CMD=./cmd/
 ARG = ""
+OUTPUT_PATH = ./
 
 # build params
 IMAGE_TAG = latest
@@ -18,12 +19,12 @@ deps: 	## Install Dependencies.
 ##@ Build
 .PHONY: build
 build: deps   ## Build Apps.
-	go build -ldflags '-s -w' -v -trimpath -a -o ${APP} ${CMD}
+	go build -ldflags '-s -w' -v -trimpath -a -o ${OUTPUT_PATH}/${APP} ${CMD}
 
 .PHONY: build.platform
 build.platform: deps
-	export GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
-	go build -ldflags '-s -w' -v -trimpath -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
+	export CGO_ENABLED=1 GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
+	go build -ldflags '-s -w' -v -trimpath -a -o ${OUTPUT_PATH}/${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.

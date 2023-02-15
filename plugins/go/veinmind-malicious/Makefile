@@ -4,6 +4,7 @@ SHELL = /bin/bash
 APP = veinmind-malicious
 CMD = cmd/scan/*
 ARG = ""
+OUTPUT_PATH = ./
 
 # build params
 IMAGE_TAG = latest

@@ -15,6 +15,7 @@ BLUE=\033[96m
 # platform
 CI_GOOS=linux
 CI_GOARCH=$(shell uname -m)
+OUTPUT_PATH=$(shell pwd)/build
 TAGS ?=
 
 ifeq ("$(shell uname)", "Darwin")
@@ -102,16 +103,20 @@ endif
 
 ##@ Build
 all: ## 			build all plugins
-	$(MAKE) $(shell ls plugins/go/)
+	@mkdir -p ${OUTPUT_PATH}
+	$(MAKE) $(shell ls plugins/go/) OUTPUT_PATH=${OUTPUT_PATH}
 
 veinmind-%: ##			build go plugins. e.g. `make veinmind-basic`
-	$(MAKE) -C plugins/go/$@ build
+	@mkdir -p ${OUTPUT_PATH}
+	$(MAKE) -C plugins/go/$@ build OUTPUT_PATH=${OUTPUT_PATH}
 
 platform.veinmind-runner:
-	$(MAKE) -C veinmind-runner build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}
+	@mkdir -p ${OUTPUT_PATH}
+	$(MAKE) -C veinmind-runner build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS} OUTPUT_PATH=${OUTPUT_PATH}
 
 platform.veinmind-%: ##   	build go plugins with platform. e.g. `make veinmind-basic CI_GOOS=linux CI_GOARCH=amd64 TAGS=xxxx`
-	$(MAKE) -C plugins/go/$(subst platform.,,$@) build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}
+	@mkdir -p ${OUTPUT_PATH}
+	$(MAKE) -C plugins/go/$(subst platform.,,$@) build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS} OUTPUT_PATH=${OUTPUT_PATH}
 
 .PHONY: help
 help:

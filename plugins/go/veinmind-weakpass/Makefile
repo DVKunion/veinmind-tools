@@ -4,6 +4,7 @@ SHELL = /bin/bash
 APP = veinmind-weakpass
 CMD = cmd/*
 ARG = ""
+OUTPUT_PATH = ./
 
 # build params
 IMAGE_TAG = latest
