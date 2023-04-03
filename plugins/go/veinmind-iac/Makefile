@@ -29,6 +29,10 @@ build.platform: deps  ## Build Apps With Platform.
 build.docker: ## Build Apps Docker Images.
 	docker build -t ${APP}:${IMAGE_TAG} .
 
+.PHONY: test
+test: ## Test Plugins
+	echo 'no test yet'
+
 ##@ Run
 .PHONY: run
 run: deps ## Run Apps. 			e.g. : `make run ARG="scan image"` .

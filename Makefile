@@ -104,14 +104,24 @@ endif
 all: ## 			build all plugins
 	$(MAKE) $(shell ls plugins/go/)
 
+.PHONY: veinmind-runner
+veinmind-runner: 	##		build veinmind-runner.
+	$(MAKE) -C veinmind-runner build
+
 veinmind-%: ##			build go plugins. e.g. `make veinmind-basic`
 	$(MAKE) -C plugins/go/$@ build
 
-platform.veinmind-runner:
+platform.veinmind-runner: ##	build veinmind-runner with platform.
 	$(MAKE) -C veinmind-runner build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}
 
 platform.veinmind-%: ##   	build go plugins with platform. e.g. `make veinmind-basic CI_GOOS=linux CI_GOARCH=amd64 TAGS=xxxx`
 	$(MAKE) -C plugins/go/$(subst platform.,,$@) build.platform CI_GOOS=${CI_GOOS} CI_GOARCH=${CI_GOARCH} TAGS=${TAGS}
+
+test.veinmind-runner: 	##		test veinmind-runner
+	$(MAKE) -C veinmind-runner test
+
+test.veinmind-%: ## 		test go plugins
+	$(MAKE) -C plugins/go/$(subst test.,,$@) test
 
 .PHONY: help
 help:

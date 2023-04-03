@@ -39,8 +39,8 @@ build.platform: deps ## Build Apps With Platform.
 	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='-Wl,.*' GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" TAGS=${TAGS} ; \
 	go build -ldflags '-s -w' -v -trimpath  -a -tags ${TAGS} -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
-.PHONY: build.arm ## Build Apps Static.
-build.arm: deps arm
+.PHONY: build.arm
+build.arm: deps arm ## Build Apps Static.
 	export CC="aarch64-linux-gnu-gcc" CXX="aarch64-linux-gnu-g++"; \
 	export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig; \
 	export CGO_ENABLED=1 CGO_LDFLAGS_ALLOW='.*' ; GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}"; \
@@ -49,6 +49,11 @@ build.arm: deps arm
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.
 	docker build -t ${APP}:${IMAGE_TAG} .
+
+.PHONY: test
+test: ## test Plugins
+	go mod tidy
+	go test ./... -tags dynamic
 
 ##@ Run
 .PHONY: run
@@ -62,7 +67,3 @@ run.docker:	## Run With Parallel Container Mode. e.g. : `make run.docker ARG="sc
 .PHONY: help
 help:
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-\\.]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-.PHONY: test
-test:
-	echo ${CFLAGS} > 1.txt

@@ -13,7 +13,7 @@ CI_GOARCH=amd64
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
-	go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
+	go version && go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
 
 ##@ Build
 .PHONY: build
@@ -23,11 +23,16 @@ build: deps   ## Build Apps.
 .PHONY: build.platform
 build.platform: deps
 	export GOOS="${CI_GOOS}" GOARCH="${CI_GOARCH}" PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig; \
+	go env -w GO111MODULE=auto; \
 	go build -ldflags '-s -w' -v -trimpath -a -o ${APP}_${CI_GOOS}_${CI_GOARCH} ${CMD}
 
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.
 	docker build -t ${APP}:${IMAGE_TAG} .
+
+.PHONY: test
+test: ## Test Plugins
+	echo 'no test yet'
 
 ##@ Run
 .PHONY: run

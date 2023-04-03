@@ -14,7 +14,7 @@ TAGS = community
 ##@ Init
 .PHONY: deps
 deps: 	## Install Dependencies.
-	go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
+	go version && go env -w GOPROXY=https://goproxy.cn,direct && go mod tidy
 
 clamav: ## Install Clamav.
 	apt-get update && apt-get install -y clamav clamav-daemon && freshclam
@@ -42,6 +42,10 @@ build.arm: deps arm
 .PHONY: build.docker
 build.docker: ## Build Apps Docker Images.
 	docker build -t ${APP}:${IMAGE_TAG} .
+
+.PHONY: test
+test: ## Test Plugins
+	echo 'no test yet'
 
 ##@ Run
 .PHONY: run
