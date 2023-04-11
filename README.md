@@ -17,7 +17,7 @@
 <p align="center"> 中文文档 | <a href="README.en.md">English</a> </p>
 
 ## 🔥 Demo
-![](https://veinmind-cache.oss-cn-hangzhou.aliyuncs.com/img/scan.gif)
+![](https://veinmind-cache.oss-cn-hangzhou.aliyuncs.com/img/index_new.gif)
 
 问脉已接入 openai, 可以使用 openai 对扫描的结果进行人性化分析，让您更加清晰的了解本次扫描发现了哪些风险。
 

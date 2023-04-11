@@ -17,7 +17,7 @@ cloudwalker team incubation，a container security toolset based on <a href="htt
 
 ## 🔥 Demo
 
-![](https://veinmind-cache.oss-cn-hangzhou.aliyuncs.com/img/scan.gif)
+![](https://veinmind-cache.oss-cn-hangzhou.aliyuncs.com/img/index_new.gif)
 
 Veinmind has been connected to openai. You can use openai to conduct a user-friendly analysis of the scan results, allowing you to have a clearer understanding of the risks identified during this scan.
 
