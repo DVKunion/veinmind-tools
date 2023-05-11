@@ -1,4 +1,4 @@
-FROM veinmind/go1.18:1.9.10-stretch as builder
+FROM veinmind/go1.18:1.9.15-bullseye as builder
 WORKDIR /build
 COPY . .
 ARG TARGETARCH
